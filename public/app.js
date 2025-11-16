@@ -1,0 +1,565 @@
+// Command Agent v3 - Enhanced Frontend (Australian English)
+// ============================================================================
+
+// State Management
+const state = {
+    currentStage: 'hero',
+    projectId: null,
+    analysis: null,
+    questions: [],
+    answers: {},
+    understanding: null,
+    knowledgeGraph: null,
+    generatedCode: null,
+    deploymentUrls: null
+};
+
+// Initialize Socket.IO
+const socket = io();
+
+// ============================================================================
+// DOM Ready
+// ============================================================================
+
+document.addEventListener('DOMContentLoaded', () => {
+    initializeEventListeners();
+    setupSocketListeners();
+});
+
+// ============================================================================
+// Event Listeners
+// ============================================================================
+
+function initializeEventListeners() {
+    // Hero CTA button
+    const startBtn = document.getElementById('startBuildingBtn');
+    if (startBtn) {
+        startBtn.addEventListener('click', () => {
+            document.getElementById('hero').style.display = 'none';
+            document.getElementById('appSection').classList.remove('hidden');
+            showStage('uploadStep');
+        });
+    }
+    
+    // File upload
+    const fileInput = document.getElementById('fileInput');
+    const uploadZone = document.getElementById('uploadZone');
+    
+    if (fileInput && uploadZone) {
+        uploadZone.addEventListener('click', () => fileInput.click());
+        
+        fileInput.addEventListener('change', handleFileSelect);
+        
+        // Drag and drop
+        uploadZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadZone.classList.add('dragover');
+        });
+        
+        uploadZone.addEventListener('dragleave', () => {
+            uploadZone.classList.remove('dragover');
+        });
+        
+        uploadZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadZone.classList.remove('dragover');
+            fileInput.files = e.dataTransfer.files;
+            handleFileSelect({ target: fileInput });
+        });
+    }
+    
+    // Questions confirmation
+    const confirmQuestionsBtn = document.getElementById('confirmQuestionsBtn');
+    if (confirmQuestionsBtn) {
+        confirmQuestionsBtn.addEventListener('click', submitAnswers);
+    }
+    
+    // Understanding confirmation
+    const approveUnderstandingBtn = document.getElementById('approveUnderstandingBtn');
+    if (approveUnderstandingBtn) {
+        approveUnderstandingBtn.addEventListener('click', () => {
+            showStage('knowledgeGraphStep');
+            generateKnowledgeGraph();
+        });
+    }
+    
+    // Knowledge graph approval
+    const approveGraphBtn = document.getElementById('approveGraphBtn');
+    if (approveGraphBtn) {
+        approveGraphBtn.addEventListener('click', startCodeGeneration);
+    }
+    
+    // Deployment options
+    const downloadZipBtn = document.getElementById('downloadZipBtn');
+    if (downloadZipBtn) {
+        downloadZipBtn.addEventListener('click', downloadZip);
+    }
+    
+    const pushGitHubBtn = document.getElementById('pushGitHubBtn');
+    if (pushGitHubBtn) {
+        pushGitHubBtn.addEventListener('click', showGitHubOptions);
+    }
+    
+    const deployMarketingBtn = document.getElementById('deployMarketingBtn');
+    if (deployMarketingBtn) {
+        deployMarketingBtn.addEventListener('click', deployMarketingWebsite);
+    }
+    
+    // Chat
+    const sendChatBtn = document.getElementById('sendChatBtn');
+    if (sendChatBtn) {
+        sendChatBtn.addEventListener('click', sendChatMessage);
+    }
+}
+
+// ============================================================================
+// Socket.IO Listeners
+// ============================================================================
+
+function setupSocketListeners() {
+    socket.on('analysis:progress', (data) => {
+        updateAnalysisProgress(data);
+    });
+    
+    socket.on('generation:progress', (data) => {
+        updateGenerationProgress(data);
+    });
+    
+    socket.on('generation:complete', (data) => {
+        handleGenerationComplete(data);
+    });
+    
+    socket.on('error', (error) => {
+        console.error('Socket error:', error);
+        showNotification(error.message, 'error');
+    });
+}
+
+// ============================================================================
+// Stage Management
+// ============================================================================
+
+function showStage(stageId) {
+    // Hide all stages
+    const stages = document.querySelectorAll('.step');
+    stages.forEach(stage => stage.classList.remove('active'));
+    
+    // Show target stage
+    const targetStage = document.getElementById(stageId);
+    if (targetStage) {
+        targetStage.classList.add('active');
+        state.currentStage = stageId;
+        
+        // Scroll to top
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+}
+
+// ============================================================================
+// File Upload
+// ============================================================================
+
+function handleFileSelect(event) {
+    const files = event.target.files;
+    if (files.length === 0) return;
+    
+    const file = files[0];
+    const fileInfo = document.getElementById('fileInfo');
+    
+    fileInfo.innerHTML = `
+        <strong>Selected:</strong> ${file.name} (${formatFileSize(file.size)})
+    `;
+    fileInfo.classList.remove('hidden');
+    
+    // Auto-upload and analyse
+    uploadAndAnalyse(file);
+}
+
+async function uploadAndAnalyse(file) {
+    showStage('analysisStep');
+    
+    const formData = new FormData();
+    formData.append('file', file);
+    
+    try {
+        const response = await fetch('/api/upload', {
+            method: 'POST',
+            body: formData
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            state.projectId = data.projectId;
+            await analyseProject();
+        } else {
+            throw new Error(data.message || 'Upload failed');
+        }
+    } catch (error) {
+        console.error('Upload error:', error);
+        showNotification('Upload failed: ' + error.message, 'error');
+        showStage('uploadStep');
+    }
+}
+
+// ============================================================================
+// Analysis
+// ============================================================================
+
+async function analyseProject() {
+    try {
+        const response = await fetch('/api/analyse', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ projectId: state.projectId })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            state.analysis = data.analysis;
+            state.questions = data.questions || [];
+            
+            if (state.questions.length > 0) {
+                displayQuestions();
+                showStage('questionsStep');
+            } else {
+                showUnderstanding();
+                showStage('confirmationStep');
+            }
+        } else {
+            throw new Error(data.message || 'Analysis failed');
+        }
+    } catch (error) {
+        console.error('Analysis error:', error);
+        showNotification('Analysis failed: ' + error.message, 'error');
+    }
+}
+
+function updateAnalysisProgress(data) {
+    const progressFill = document.getElementById('progressFill');
+    const analysisProgress = document.getElementById('analysisProgress');
+    const timeRemaining = document.getElementById('timeRemaining');
+    const tokensUsed = document.getElementById('tokensUsed');
+    const progressStatus = document.getElementById('progressStatus');
+    
+    if (progressFill) progressFill.style.width = data.percentage + '%';
+    if (analysisProgress) analysisProgress.textContent = data.percentage + '%';
+    if (timeRemaining) timeRemaining.textContent = data.timeRemaining || 'Calculating...';
+    if (tokensUsed) tokensUsed.textContent = data.tokensUsed || '0';
+    if (progressStatus) progressStatus.textContent = data.status || 'Analysing...';
+}
+
+// ============================================================================
+// Questions
+// ============================================================================
+
+function displayQuestions() {
+    const questionsList = document.getElementById('questionsList');
+    if (!questionsList) return;
+    
+    questionsList.innerHTML = state.questions.map((q, index) => `
+        <div class="question-item">
+            <div class="question-text">${q.question}</div>
+            <textarea 
+                id="answer-${index}" 
+                class="question-input" 
+                placeholder="Your answer..."
+                rows="3"
+            ></textarea>
+        </div>
+    `).join('');
+}
+
+function submitAnswers() {
+    state.answers = {};
+    
+    state.questions.forEach((q, index) => {
+        const answerEl = document.getElementById(`answer-${index}`);
+        if (answerEl) {
+            state.answers[q.id || index] = answerEl.value;
+        }
+    });
+    
+    showUnderstanding();
+    showStage('confirmationStep');
+}
+
+// ============================================================================
+// Understanding Confirmation
+// ============================================================================
+
+function showUnderstanding() {
+    const understandingSummary = document.getElementById('understandingSummary');
+    if (!understandingSummary) return;
+    
+    let summaryText = '<h3>Project Overview</h3>';
+    summaryText += `<p>${state.analysis.summary || 'No summary available'}</p>`;
+    
+    if (state.analysis.features && state.analysis.features.length > 0) {
+        summaryText += '<h3>Key Features</h3><ul>';
+        state.analysis.features.forEach(feature => {
+            summaryText += `<li>${feature}</li>`;
+        });
+        summaryText += '</ul>';
+    }
+    
+    if (Object.keys(state.answers).length > 0) {
+        summaryText += '<h3>Your Answers</h3><ul>';
+        Object.entries(state.answers).forEach(([key, value]) => {
+            if (value) {
+                summaryText += `<li>${value}</li>`;
+            }
+        });
+        summaryText += '</ul>';
+    }
+    
+    understandingSummary.innerHTML = summaryText;
+    state.understanding = summaryText;
+}
+
+// ============================================================================
+// Knowledge Graph
+// ============================================================================
+
+function generateKnowledgeGraph() {
+    const graphContainer = document.getElementById('knowledgeGraph');
+    if (!graphContainer) return;
+    
+    // Simple visual representation using divs (can be replaced with D3.js or similar)
+    graphContainer.innerHTML = `
+        <div style="display: flex; flex-direction: column; gap: 20px; align-items: center;">
+            <div style="background: #2563eb; color: white; padding: 20px; border-radius: 10px; font-weight: 600;">
+                User Requirements
+            </div>
+            <div style="width: 2px; height: 30px; background: #2563eb;"></div>
+            <div style="background: #10b981; color: white; padding: 20px; border-radius: 10px; font-weight: 600;">
+                AI Analysis
+            </div>
+            <div style="width: 2px; height: 30px; background: #10b981;"></div>
+            <div style="display: flex; gap: 20px;">
+                <div style="background: #f59e0b; color: white; padding: 20px; border-radius: 10px; font-weight: 600;">
+                    Frontend
+                </div>
+                <div style="background: #f59e0b; color: white; padding: 20px; border-radius: 10px; font-weight: 600;">
+                    Backend
+                </div>
+                <div style="background: #f59e0b; color: white; padding: 20px; border-radius: 10px; font-weight: 600;">
+                    Database
+                </div>
+            </div>
+            <div style="width: 2px; height: 30px; background: #f59e0b;"></div>
+            <div style="background: #8b5cf6; color: white; padding: 20px; border-radius: 10px; font-weight: 600;">
+                Deployed Application
+            </div>
+        </div>
+    `;
+}
+
+// ============================================================================
+// Code Generation
+// ============================================================================
+
+async function startCodeGeneration() {
+    showStage('generationStep');
+    
+    try {
+        const response = await fetch('/api/generate', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                projectId: state.projectId,
+                analysis: state.analysis,
+                answers: state.answers
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            state.generatedCode = data.code;
+            showStage('deploymentStep');
+        } else {
+            throw new Error(data.message || 'Generation failed');
+        }
+    } catch (error) {
+        console.error('Generation error:', error);
+        showNotification('Code generation failed: ' + error.message, 'error');
+    }
+}
+
+function updateGenerationProgress(data) {
+    const progressFill = document.getElementById('generationProgressFill');
+    const generationProgress = document.getElementById('generationProgress');
+    const filesCreated = document.getElementById('filesCreated');
+    const linesOfCode = document.getElementById('linesOfCode');
+    const generationStatus = document.getElementById('generationStatus');
+    
+    if (progressFill) progressFill.style.width = data.percentage + '%';
+    if (generationProgress) generationProgress.textContent = data.percentage + '%';
+    if (filesCreated) filesCreated.textContent = data.filesCreated || '0';
+    if (linesOfCode) linesOfCode.textContent = data.linesOfCode || '0';
+    if (generationStatus) generationStatus.textContent = data.status || 'Generating code...';
+}
+
+function handleGenerationComplete(data) {
+    state.generatedCode = data.code;
+    showStage('deploymentStep');
+}
+
+// ============================================================================
+// Deployment
+// ============================================================================
+
+async function downloadZip() {
+    if (!state.projectId) return;
+    
+    window.location.href = `/api/download/${state.projectId}`;
+}
+
+function showGitHubOptions() {
+    const repoName = prompt('Enter GitHub repository name:');
+    if (!repoName) return;
+    
+    const token = prompt('Enter your GitHub Personal Access Token:');
+    if (!token) return;
+    
+    pushToGitHub(repoName, token);
+}
+
+async function pushToGitHub(repoName, token) {
+    try {
+        const response = await fetch('/api/github', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                projectId: state.projectId,
+                repoName: repoName,
+                token: token
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            showNotification('Code pushed to GitHub successfully!', 'success');
+            window.open(data.repoUrl, '_blank');
+        } else {
+            throw new Error(data.message || 'GitHub push failed');
+        }
+    } catch (error) {
+        console.error('GitHub error:', error);
+        showNotification('GitHub push failed: ' + error.message, 'error');
+    }
+}
+
+async function deployMarketingWebsite() {
+    showLoadingOverlay('Deploying your marketing website and application...');
+    
+    try {
+        const response = await fetch('/api/deploy-marketing', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                projectId: state.projectId
+            })
+        });
+        
+        const data = await response.json();
+        
+        hideLoadingOverlay();
+        
+        if (data.success) {
+            state.deploymentUrls = data.urls;
+            showNotification('Deployment successful!', 'success');
+            
+            // Show deployed URLs
+            alert(`Your application is live!\n\nMarketing Website: ${data.urls.marketing}\nApplication: ${data.urls.app}`);
+        } else {
+            throw new Error(data.message || 'Deployment failed');
+        }
+    } catch (error) {
+        hideLoadingOverlay();
+        console.error('Deployment error:', error);
+        showNotification('Deployment failed: ' + error.message, 'error');
+    }
+}
+
+// ============================================================================
+// Chat
+// ============================================================================
+
+async function sendChatMessage() {
+    const chatInput = document.getElementById('chatInput');
+    if (!chatInput || !chatInput.value.trim()) return;
+    
+    const message = chatInput.value.trim();
+    chatInput.value = '';
+    
+    // Display user message
+    addChatMessage(message, 'user');
+    
+    try {
+        const response = await fetch('/api/chat', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                projectId: state.projectId,
+                message: message
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            addChatMessage(data.response, 'assistant');
+        } else {
+            throw new Error(data.message || 'Chat failed');
+        }
+    } catch (error) {
+        console.error('Chat error:', error);
+        addChatMessage('Sorry, I encountered an error. Please try again.', 'assistant');
+    }
+}
+
+function addChatMessage(message, role) {
+    const chatMessages = document.getElementById('chatMessages');
+    if (!chatMessages) return;
+    
+    const messageEl = document.createElement('div');
+    messageEl.className = `chat-message ${role}`;
+    messageEl.textContent = message;
+    
+    chatMessages.appendChild(messageEl);
+    chatMessages.scrollTop = chatMessages.scrollHeight;
+}
+
+// ============================================================================
+// Utility Functions
+// ============================================================================
+
+function formatFileSize(bytes) {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
+}
+
+function showNotification(message, type = 'info') {
+    // Simple alert for now (can be replaced with toast notifications)
+    alert(message);
+}
+
+function showLoadingOverlay(message) {
+    const overlay = document.getElementById('loadingOverlay');
+    const loadingMessage = document.getElementById('loadingMessage');
+    
+    if (overlay) overlay.classList.remove('hidden');
+    if (loadingMessage) loadingMessage.textContent = message;
+}
+
+function hideLoadingOverlay() {
+    const overlay = document.getElementById('loadingOverlay');
+    if (overlay) overlay.classList.add('hidden');
+}

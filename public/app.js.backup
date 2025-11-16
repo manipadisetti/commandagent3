@@ -1,0 +1,518 @@
+// Command Agent v3 - Frontend Application
+// ============================================================================
+
+// State Management
+const state = {
+    currentStep: 1,
+    projectId: null,
+    analysis: null,
+    files: [],
+};
+
+// Initialize Socket.IO
+const socket = io();
+
+// DOM Elements
+const elements = {
+    // Steps
+    steps: document.querySelectorAll('.step'),
+    stepContents: document.querySelectorAll('.step-content'),
+    
+    // Forms
+    uploadForm: document.getElementById('upload-form'),
+    questionsForm: document.getElementById('questions-form'),
+    githubForm: document.getElementById('github-form'),
+    
+    // Buttons
+    uploadBtn: document.getElementById('upload-btn'),
+    generateBtn: document.getElementById('generate-btn'),
+    downloadBtn: document.getElementById('download-btn'),
+    githubBtn: document.getElementById('github-btn'),
+    newProjectBtn: document.getElementById('new-project-btn'),
+    backToUploadBtn: document.getElementById('back-to-upload-btn'),
+    cancelGithubBtn: document.getElementById('cancel-github-btn'),
+    
+    // File upload
+    fileInput: document.getElementById('files'),
+    fileUploadArea: document.getElementById('file-upload-area'),
+    fileList: document.getElementById('file-list'),
+    
+    // Analysis
+    analysisSummary: document.getElementById('analysis-summary'),
+    
+    // Generation
+    progressFill: document.getElementById('progress-fill'),
+    progressText: document.getElementById('progress-text'),
+    generationLog: document.getElementById('generation-log'),
+    generationSummary: document.getElementById('generation-summary'),
+    
+    // Modal
+    githubModal: document.getElementById('github-modal'),
+    modalOverlay: document.getElementById('modal-overlay'),
+    
+    // Toast
+    toastContainer: document.getElementById('toast-container'),
+};
+
+// ============================================================================
+// Utility Functions
+// ============================================================================
+
+function showToast(message, type = 'info') {
+    const toast = document.createElement('div');
+    toast.className = `toast ${type}`;
+    toast.innerHTML = `
+        <span class="toast-icon">${type === 'success' ? '✅' : type === 'error' ? '❌' : 'ℹ️'}</span>
+        <span class="toast-message">${message}</span>
+    `;
+    
+    elements.toastContainer.appendChild(toast);
+    
+    setTimeout(() => {
+        toast.remove();
+    }, 5000);
+}
+
+function setStep(stepNumber) {
+    state.currentStep = stepNumber;
+    
+    // Update step indicators
+    elements.steps.forEach((step, index) => {
+        const stepNum = index + 1;
+        step.classList.remove('active', 'completed');
+        
+        if (stepNum === stepNumber) {
+            step.classList.add('active');
+        } else if (stepNum < stepNumber) {
+            step.classList.add('completed');
+        }
+    });
+    
+    // Update step content
+    elements.stepContents.forEach((content, index) => {
+        const stepNum = index + 1;
+        content.classList.remove('active');
+        content.hidden = true;
+        
+        if (stepNum === stepNumber) {
+            content.classList.add('active');
+            content.hidden = false;
+        }
+    });
+    
+    // Scroll to top
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function formatFileSize(bytes) {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
+}
+
+function updateFileList() {
+    elements.fileList.innerHTML = '';
+    
+    state.files.forEach((file, index) => {
+        const fileItem = document.createElement('div');
+        fileItem.className = 'file-item';
+        fileItem.setAttribute('role', 'listitem');
+        fileItem.innerHTML = `
+            <div>
+                <span class="file-name">${file.name}</span>
+                <span class="file-size">${formatFileSize(file.size)}</span>
+            </div>
+            <button type="button" class="file-remove" data-index="${index}" aria-label="Remove ${file.name}">
+                ×
+            </button>
+        `;
+        
+        elements.fileList.appendChild(fileItem);
+    });
+    
+    // Add remove handlers
+    document.querySelectorAll('.file-remove').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            const index = parseInt(e.target.dataset.index);
+            state.files.splice(index, 1);
+            updateFileList();
+        });
+    });
+}
+
+// ============================================================================
+// File Upload Handling
+// ============================================================================
+
+elements.fileInput.addEventListener('change', (e) => {
+    const files = Array.from(e.target.files);
+    state.files.push(...files);
+    updateFileList();
+});
+
+// Drag and drop
+elements.fileUploadArea.addEventListener('dragover', (e) => {
+    e.preventDefault();
+    elements.fileUploadArea.classList.add('dragover');
+});
+
+elements.fileUploadArea.addEventListener('dragleave', () => {
+    elements.fileUploadArea.classList.remove('dragover');
+});
+
+elements.fileUploadArea.addEventListener('drop', (e) => {
+    e.preventDefault();
+    elements.fileUploadArea.classList.remove('dragover');
+    
+    const files = Array.from(e.dataTransfer.files);
+    state.files.push(...files);
+    updateFileList();
+});
+
+// ============================================================================
+// Upload Form Submission
+// ============================================================================
+
+elements.uploadForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    
+    if (state.files.length === 0) {
+        showToast('Please select at least one file', 'error');
+        return;
+    }
+    
+    const formData = new FormData();
+    formData.append('projectName', document.getElementById('project-name').value);
+    formData.append('projectDescription', document.getElementById('project-description').value);
+    formData.append('projectType', document.getElementById('project-type').value);
+    
+    state.files.forEach(file => {
+        formData.append('files', file);
+    });
+    
+    elements.uploadBtn.disabled = true;
+    elements.uploadBtn.innerHTML = '<span class="btn-text">Uploading...</span>';
+    
+    try {
+        const response = await fetch('/api/upload', {
+            method: 'POST',
+            body: formData,
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            state.projectId = data.project.id;
+            showToast('Files uploaded successfully!', 'success');
+            
+            // Automatically start analysis
+            await analyzeProject();
+        } else {
+            throw new Error(data.message || 'Upload failed');
+        }
+    } catch (error) {
+        console.error('Upload error:', error);
+        showToast(error.message, 'error');
+        elements.uploadBtn.disabled = false;
+        elements.uploadBtn.innerHTML = '<span class="btn-text">Upload & Analyze</span><span class="btn-icon">→</span>';
+    }
+});
+
+// ============================================================================
+// Analysis
+// ============================================================================
+
+async function analyzeProject() {
+    try {
+        const response = await fetch('/api/analyse', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ projectId: state.projectId }),
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            state.analysis = data.analysis;
+            displayAnalysis();
+            setStep(2);
+        } else {
+            throw new Error(data.message || 'Analysis failed');
+        }
+    } catch (error) {
+        console.error('Analysis error:', error);
+        showToast(error.message, 'error');
+    }
+}
+
+function displayAnalysis() {
+    const analysis = state.analysis;
+    
+    // Display summary
+    elements.analysisSummary.innerHTML = `
+        <div class="analysis-section">
+            <h4>Summary</h4>
+            <p>${analysis.summary}</p>
+        </div>
+        
+        ${analysis.features && analysis.features.length > 0 ? `
+            <div class="analysis-section">
+                <h4>Key Features</h4>
+                <ul>
+                    ${analysis.features.map(f => `<li>${f}</li>`).join('')}
+                </ul>
+            </div>
+        ` : ''}
+        
+        ${analysis.technical_requirements && analysis.technical_requirements.length > 0 ? `
+            <div class="analysis-section">
+                <h4>Technical Requirements</h4>
+                <ul>
+                    ${analysis.technical_requirements.map(r => `<li>${r}</li>`).join('')}
+                </ul>
+            </div>
+        ` : ''}
+        
+        ${analysis.recommended_tech_stack && analysis.recommended_tech_stack.length > 0 ? `
+            <div class="analysis-section">
+                <h4>Recommended Tech Stack</h4>
+                <div class="tech-stack">
+                    ${analysis.recommended_tech_stack.map(t => `<span class="tech-badge">${t}</span>`).join('')}
+                </div>
+            </div>
+        ` : ''}
+    `;
+    
+    // Display questions
+    if (analysis.clarifying_questions && analysis.clarifying_questions.length > 0) {
+        elements.questionsForm.innerHTML = analysis.clarifying_questions.map((q, index) => `
+            <div class="form-group">
+                <label for="question-${index}" class="form-label">
+                    ${q.question}
+                    <span class="question-category">[${q.category}]</span>
+                </label>
+                <p class="form-hint">${q.reason}</p>
+                <textarea 
+                    id="question-${index}" 
+                    name="question-${index}" 
+                    class="form-textarea" 
+                    rows="2"
+                    placeholder="Your answer..."
+                ></textarea>
+            </div>
+        `).join('');
+    } else {
+        elements.questionsForm.innerHTML = '<p>No clarifying questions needed. Ready to generate!</p>';
+    }
+}
+
+// ============================================================================
+// Code Generation
+// ============================================================================
+
+elements.generateBtn.addEventListener('click', async () => {
+    // Collect answers
+    const answers = {};
+    const questions = state.analysis.clarifying_questions || [];
+    
+    questions.forEach((q, index) => {
+        const answer = document.getElementById(`question-${index}`).value;
+        if (answer) {
+            answers[q.question] = answer;
+        }
+    });
+    
+    setStep(3);
+    
+    try {
+        const response = await fetch('/api/generate', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                projectId: state.projectId,
+                answers: answers,
+            }),
+        });
+        
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = '';
+        
+        while (true) {
+            const { done, value } = await reader.read();
+            
+            if (done) break;
+            
+            buffer += decoder.decode(value, { stream: true });
+            const lines = buffer.split('\n');
+            buffer = lines.pop();
+            
+            for (const line of lines) {
+                if (line.startsWith('data: ')) {
+                    try {
+                        const data = JSON.parse(line.slice(6));
+                        handleGenerationEvent(data);
+                    } catch (e) {
+                        console.error('Parse error:', e);
+                    }
+                }
+            }
+        }
+    } catch (error) {
+        console.error('Generation error:', error);
+        showToast('Generation failed: ' + error.message, 'error');
+    }
+});
+
+function handleGenerationEvent(data) {
+    switch (data.type) {
+        case 'status':
+            elements.progressText.textContent = data.message;
+            addLogEntry(data.message);
+            break;
+            
+        case 'file':
+            addLogEntry(`📄 Generating: ${data.filename}`);
+            break;
+            
+        case 'progress':
+            // Update progress bar based on content length
+            const progress = Math.min((data.length / 10000) * 100, 95);
+            elements.progressFill.style.width = progress + '%';
+            elements.progressFill.setAttribute('aria-valuenow', progress);
+            break;
+            
+        case 'complete':
+            elements.progressFill.style.width = '100%';
+            elements.progressFill.setAttribute('aria-valuenow', 100);
+            elements.progressText.textContent = 'Generation complete!';
+            addLogEntry(`✅ Complete! Generated ${data.fileCount} files in ${data.duration}`);
+            
+            elements.generationSummary.textContent = `Successfully generated ${data.fileCount} files for your project.`;
+            
+            setTimeout(() => {
+                setStep(4);
+            }, 1000);
+            break;
+            
+        case 'error':
+            showToast('Generation error: ' + data.error, 'error');
+            addLogEntry(`❌ Error: ${data.error}`);
+            break;
+    }
+}
+
+function addLogEntry(message) {
+    const entry = document.createElement('div');
+    entry.className = 'log-entry';
+    entry.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+    elements.generationLog.appendChild(entry);
+    elements.generationLog.scrollTop = elements.generationLog.scrollHeight;
+}
+
+// ============================================================================
+// Download
+// ============================================================================
+
+elements.downloadBtn.addEventListener('click', () => {
+    window.location.href = `/api/download/${state.projectId}`;
+    showToast('Download started!', 'success');
+});
+
+// ============================================================================
+// GitHub Integration
+// ============================================================================
+
+elements.githubBtn.addEventListener('click', () => {
+    elements.githubModal.hidden = false;
+});
+
+elements.cancelGithubBtn.addEventListener('click', () => {
+    elements.githubModal.hidden = true;
+});
+
+elements.modalOverlay.addEventListener('click', () => {
+    elements.githubModal.hidden = true;
+});
+
+elements.githubForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    
+    const githubToken = document.getElementById('github-token').value;
+    const repoName = document.getElementById('repo-name').value;
+    const repoDescription = document.getElementById('repo-description').value;
+    const isPrivate = document.getElementById('repo-private').checked;
+    
+    try {
+        const response = await fetch('/api/github/push', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                projectId: state.projectId,
+                githubToken,
+                repoName,
+                repoDescription,
+                isPrivate,
+            }),
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            showToast(`Successfully pushed to GitHub: ${data.repository.url}`, 'success');
+            elements.githubModal.hidden = true;
+            
+            // Open GitHub repo in new tab
+            window.open(data.repository.url, '_blank');
+        } else {
+            throw new Error(data.message || 'GitHub push failed');
+        }
+    } catch (error) {
+        console.error('GitHub error:', error);
+        showToast(error.message, 'error');
+    }
+});
+
+// ============================================================================
+// Navigation
+// ============================================================================
+
+elements.backToUploadBtn.addEventListener('click', () => {
+    setStep(1);
+});
+
+elements.newProjectBtn.addEventListener('click', () => {
+    // Reset state
+    state.currentStep = 1;
+    state.projectId = null;
+    state.analysis = null;
+    state.files = [];
+    
+    // Reset forms
+    elements.uploadForm.reset();
+    elements.fileList.innerHTML = '';
+    elements.progressFill.style.width = '0%';
+    elements.generationLog.innerHTML = '';
+    
+    setStep(1);
+});
+
+// ============================================================================
+// Keyboard Navigation
+// ============================================================================
+
+document.addEventListener('keydown', (e) => {
+    // Close modal on Escape
+    if (e.key === 'Escape' && !elements.githubModal.hidden) {
+        elements.githubModal.hidden = true;
+    }
+});
+
+// ============================================================================
+// Initialize
+// ============================================================================
+
+console.log('Command Agent v3 initialized');
+showToast('Welcome to Command Agent v3! 🚀', 'success');

@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="en-AU">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Command Agent v3 - Build Applications in Minutes</title>
+    <meta name="description" content="Transform your ideas into working applications. Upload requirements, get intelligent analysis, and generate production-ready code automatically.">
+    <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+    <!-- Hero Section -->
+    <section id="hero" class="hero">
+        <div class="container">
+            <h1 class="hero-title">Build Applications in Minutes, Not Months</h1>
+            <p class="hero-subtitle">Upload your requirements. Get intelligent analysis. Generate production-ready code. Deploy instantly.</p>
+            <button id="startBuildingBtn" class="cta-button">Start Building Now</button>
+            <div class="hero-features">
+                <div class="feature-badge">✨ AI-Powered Analysis</div>
+                <div class="feature-badge">🚀 Instant Deployment</div>
+                <div class="feature-badge">📊 Knowledge Graphs</div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Main Application Section -->
+    <section id="appSection" class="app-section hidden">
+        <div class="container">
+            
+            <!-- Step 1: Upload -->
+            <div id="uploadStep" class="step active">
+                <div class="stage-header">
+                    <h2>Step 1: Upload Your Requirements</h2>
+                    <p>Upload a document describing what you want to build (.txt, .md, .pdf, .docx)</p>
+                </div>
+                <div class="workflow-stage">
+                    <div class="upload-zone" id="uploadZone">
+                        <div class="upload-icon">📄</div>
+                        <p class="upload-text">Drag and drop your file here</p>
+                        <p class="upload-subtext">or click to browse</p>
+                        <input type="file" id="fileInput" accept=".txt,.md,.pdf,.docx" hidden>
+                        <button class="browse-button" onclick="document.getElementById('fileInput').click()">Browse Files</button>
+                    </div>
+                    <div id="fileInfo" class="file-info hidden"></div>
+                </div>
+            </div>
+
+            <!-- Step 2: Analysis Progress -->
+            <div id="analysisStep" class="step">
+                <div class="stage-header">
+                    <h2>Step 2: Analysing Your Requirements</h2>
+                    <p>Our AI is reading and understanding your project...</p>
+                </div>
+                <div class="workflow-stage">
+                    <div class="progress-container">
+                        <div class="progress-stats">
+                            <div class="stat">
+                                <span class="stat-label">Progress</span>
+                                <span class="stat-value" id="analysisProgress">0%</span>
+                            </div>
+                            <div class="stat">
+                                <span class="stat-label">Time Remaining</span>
+                                <span class="stat-value" id="timeRemaining">Calculating...</span>
+                            </div>
+                            <div class="stat">
+                                <span class="stat-label">Tokens Used</span>
+                                <span class="stat-value" id="tokensUsed">0</span>
+                            </div>
+                        </div>
+                        <div class="progress-bar">
+                            <div class="progress-fill" id="progressFill"></div>
+                        </div>
+                        <div class="progress-status" id="progressStatus">
+                            <div class="spinner"></div>
+                            <span>Analysing...</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Step 3: Questions -->
+            <div id="questionsStep" class="step">
+                <div class="stage-header">
+                    <h2>Step 3: Clarifying Questions</h2>
+                    <p>Help us understand your project better by answering these questions</p>
+                </div>
+                <div class="workflow-stage">
+                    <div id="questionsList" class="questions-list"></div>
+                    <div class="step-actions">
+                        <button id="confirmQuestionsBtn" class="primary-button">Confirm & Continue</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Step 4: Understanding Confirmation -->
+            <div id="confirmationStep" class="step">
+                <div class="stage-header">
+                    <h2>Step 4: Confirm Our Understanding</h2>
+                    <p>Here's what we understand about your project</p>
+                </div>
+                <div class="workflow-stage">
+                    <div id="understandingSummary" class="understanding-summary"></div>
+                    <div class="step-actions">
+                        <button id="editUnderstandingBtn" class="secondary-button">Edit</button>
+                        <button id="approveUnderstandingBtn" class="primary-button">Looks Good!</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Step 5: Knowledge Graph -->
+            <div id="knowledgeGraphStep" class="step">
+                <div class="stage-header">
+                    <h2>Step 5: Project Knowledge Graph</h2>
+                    <p>Visual representation of how your application will work</p>
+                </div>
+                <div class="workflow-stage">
+                    <div id="knowledgeGraph" class="knowledge-graph-container"></div>
+                    <div class="step-actions">
+                        <button id="approveGraphBtn" class="primary-button">Approve & Generate Code</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Step 6: Code Generation -->
+            <div id="generationStep" class="step">
+                <div class="stage-header">
+                    <h2>Step 6: Generating Your Application</h2>
+                    <p>Creating production-ready code...</p>
+                </div>
+                <div class="workflow-stage">
+                    <div class="progress-container">
+                        <div class="progress-stats">
+                            <div class="stat">
+                                <span class="stat-label">Progress</span>
+                                <span class="stat-value" id="generationProgress">0%</span>
+                            </div>
+                            <div class="stat">
+                                <span class="stat-label">Files Created</span>
+                                <span class="stat-value" id="filesCreated">0</span>
+                            </div>
+                            <div class="stat">
+                                <span class="stat-label">Lines of Code</span>
+                                <span class="stat-value" id="linesOfCode">0</span>
+                            </div>
+                        </div>
+                        <div class="progress-bar">
+                            <div class="progress-fill" id="generationProgressFill"></div>
+                        </div>
+                        <div class="progress-status" id="generationStatus">
+                            <div class="spinner"></div>
+                            <span>Generating code...</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Step 7: Deployment Options -->
+            <div id="deploymentStep" class="step">
+                <div class="stage-header">
+                    <h2>Step 7: Your Application is Ready!</h2>
+                    <p>Choose how you'd like to deploy your application</p>
+                </div>
+                <div class="workflow-stage">
+                    <div class="deployment-options">
+                        <div class="deployment-option">
+                            <div class="option-icon">📦</div>
+                            <h3>Download ZIP</h3>
+                            <p>Download your application as a ZIP file</p>
+                            <button id="downloadZipBtn" class="option-button">Download</button>
+                        </div>
+                        <div class="deployment-option">
+                            <div class="option-icon">🔗</div>
+                            <h3>Push to GitHub</h3>
+                            <p>Push your code to a GitHub repository</p>
+                            <button id="pushGitHubBtn" class="option-button">Push to GitHub</button>
+                        </div>
+                        <div class="deployment-option highlighted">
+                            <div class="option-icon">🚀</div>
+                            <h3>Deploy Marketing Website</h3>
+                            <p>Auto-create and deploy a marketing website + application for testing</p>
+                            <button id="deployMarketingBtn" class="option-button primary">Deploy Now</button>
+                        </div>
+                    </div>
+                    
+                    <!-- Chat Support -->
+                    <div class="chat-container">
+                        <h3 style="margin-bottom: 1rem;">Need Modifications?</h3>
+                        <p style="color: #6b7280; margin-bottom: 1.5rem;">Chat with our AI to make changes to your application</p>
+                        <div id="chatMessages" class="chat-messages"></div>
+                        <div class="chat-input-container">
+                            <textarea id="chatInput" placeholder="Describe the changes you'd like to make..." rows="3"></textarea>
+                            <button id="sendChatBtn" class="send-button">Send</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </section>
+
+    <!-- Loading Overlay -->
+    <div id="loadingOverlay" class="loading-overlay hidden">
+        <div class="spinner"></div>
+        <p id="loadingMessage">Processing...</p>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="/app.js"></script>
+</body>
+</html>
