@@ -92,11 +92,14 @@ ${Object.keys(context.answers).length > 0 ? `User Answers:\n${JSON.stringify(con
 ${Object.keys(context.preferences).length > 0 ? `Preferences:\n${JSON.stringify(context.preferences, null, 2)}` : ''}
 
 Generate a complete application with:
-1. All necessary source code files
-2. Configuration files (package.json, .env.example, etc.)
-3. README.md with setup instructions
-4. Database schema (if needed)
-5. API documentation (if applicable)
+1. index.html - The main entry point that loads the application
+2. All necessary source code files
+3. Configuration files (package.json, .env.example, etc.)
+4. README.md with setup instructions
+5. Database schema (if needed)
+6. API documentation (if applicable)
+
+The index.html file MUST be in the root directory and should load all necessary CSS and JavaScript files.
 
 IMPORTANT: Format your response EXACTLY as a series of files using this structure:
 === FILENAME: path/to/file.ext ===

@@ -205,8 +205,12 @@ async function uploadAndAnalyse(file) {
     
     showStage('analysisStep');
     
+    // Extract project name from filename
+    const projectName = file.name.replace(/\.[^/.]+$/, '').replace(/[-_]/g, ' ');
+    
     const formData = new FormData();
     formData.append('files', file);
+    formData.append('projectName', projectName);
     
     try {
         const response = await fetch('/api/upload', {
