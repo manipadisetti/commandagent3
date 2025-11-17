@@ -130,7 +130,7 @@ function generateMarketingWebsite(project, analysis, baseUrl) {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>${projectName} - AI-Generated Application</title>
+    <title>${projectName}</title>
     <meta name="description" content="${description}">
     <link rel="stylesheet" href="styles.css">
 </head>
@@ -138,65 +138,27 @@ function generateMarketingWebsite(project, analysis, baseUrl) {
     <!-- Hero Section -->
     <header class="hero">
         <div class="container">
-            <h1 class="hero-title">From Idea to Deployed App in Minutes</h1>
-            <p class="hero-subtitle">Stop wrestling with boilerplate code. Command Agent v3 is your AI software development partner that turns plain English requirements into fully functional, production-ready applications.</p>
+            <h1 class="hero-title">${projectName}</h1>
+            <p class="hero-subtitle">${description}</p>
             <div class="cta-buttons">
-                <a href="#how-it-works" class="btn btn-primary">See How It Works</a>
-                <a href="${appUrl}" class="btn btn-secondary">Launch Live Demo</a>
+                <a href="#features" class="btn btn-primary">Explore Features</a>
+                <a href="${appUrl}" class="btn btn-secondary">Launch Application</a>
             </div>
         </div>
     </header>
 
-    <!-- The Story (Why) -->
-    <section class="story">
+    <!-- About Section -->
+    <section class="about">
         <div class="container">
-            <h2 class="section-title">The Frustration of the First 90%</h2>
-            <p class="section-intro">Every developer knows the feeling. You have a brilliant idea, but spend weeks on boilerplate instead of the core logic. What if you could skip that entirely?</p>
-            <div class="story-grid">
-                <div class="story-point">
-                    <h3>Why do we write the same code over and over?</h3>
-                    <p>Command Agent v3 automates the repetitive setup so you can focus on what makes your app unique.</p>
-                </div>
-                <div class="story-point">
-                    <h3>What if an AI could build the foundation?</h3>
-                    <p>We combine large language models with software engineering best practices to build robust applications from your requirements.</p>
-                </div>
-                <div class="story-point">
-                    <h3>Who is this for?</h3>
-                    <p>For solo developers, startups, and enterprise teams who need to move fast and prototype rapidly.</p>
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <!-- How It Works -->
-    <section id="how-it-works" class="how-it-works">
-        <div class="container">
-            <h2 class="section-title">Your 3-Step Journey to a Deployed App</h2>
-            <div class="steps-grid">
-                <div class="step-card">
-                    <div class="step-number">1</div>
-                    <h3>Upload Your Vision</h3>
-                    <p>Start with a simple text file, markdown document, or PDF describing what you want to build.</p>
-                </div>
-                <div class="step-card">
-                    <div class="step-number">2</div>
-                    <h3>Intelligent Analysis</h3>
-                    <p>Our AI agent reads your requirements, asks clarifying questions, and builds a knowledge graph of your app.</p>
-                </div>
-                <div class="step-card">
-                    <div class="step-number">3</div>
-                    <h3>Generate & Deploy</h3>
-                    <p>With your approval, Command Agent v3 generates the complete full-stack application and deploys it in one click.</p>
-                </div>
-            </div>
+            <h2 class="section-title">About ${projectName}</h2>
+            <p class="section-intro">${description}</p>
         </div>
     </section>
 
     <!-- Features Section -->
     <section id="features" class="features">
         <div class="container">
-            <h2 class="section-title">More Than Just a Code Generator</h2>
+            <h2 class="section-title">Key Features</h2>
             <div class="features-grid">
                 ${features.slice(0, 6).map((feature, index) => `
                     <div class="feature-card">
@@ -225,8 +187,8 @@ function generateMarketingWebsite(project, analysis, baseUrl) {
     <!-- CTA Section -->
     <section class="cta-section">
         <div class="container">
-            <h2>Ready to Build at the Speed of Thought?</h2>
-            <a href="${appUrl}" class="btn btn-large">Launch Application</a>
+            <h2>Ready to Get Started?</h2>
+            <a href="${appUrl}" class="btn btn-large">Launch ${projectName}</a>
         </div>
     </section>
 
@@ -333,10 +295,24 @@ body {
     font-size: 1.125rem;
 }
 
+/* About Section */
+.about {
+    padding: 5rem 0;
+    background: white;
+}
+
+.section-intro {
+    text-align: center;
+    font-size: 1.25rem;
+    max-width: 800px;
+    margin: 0 auto;
+    color: var(--secondary);
+}
+
 /* Features Section */
 .features {
     padding: 5rem 0;
-    background: white;
+    background: var(--gray-50);
 }
 
 .section-title {

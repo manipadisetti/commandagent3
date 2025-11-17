@@ -78,26 +78,40 @@ router.post('/', async (req, res) => {
     // Send to Gemini for analysis
     const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash-exp' });
 
-    const prompt = `You are an expert software requirements analyst. Analyse the following requirements documents and provide:
+    const prompt = `You are an expert business analyst helping non-technical users build applications. Analyse the following requirements documents and provide:
 
 1. A comprehensive summary of what needs to be built
 2. Key features and functionality identified
 3. Technical requirements and constraints
-4. 5-10 clarifying questions to ask the user to ensure complete understanding
+4. 5-10 clarifying questions focused on BUSINESS NEEDS (NOT technical implementation)
+
+IMPORTANT: Your questions MUST be business-focused and understandable by non-technical users. Ask about:
+- WHO will use this (target audience, user roles)
+- WHAT problems it solves (business goals, pain points)
+- WHEN it will be used (workflows, timing, frequency)
+- WHERE it will be accessed (devices, locations, contexts)
+- WHY certain features matter (priorities, success metrics)
+- HOW users will interact (user experience, workflows)
+
+DO NOT ask about:
+- Programming languages or frameworks
+- Databases or technical architecture
+- Hosting or deployment details
+- Technical implementation specifics
 
 Requirements Documents:
 ${combinedContent}
 
 Please respond in JSON format ONLY (no markdown, no code blocks):
 {
-  "summary": "Brief overview of the project",
+  "summary": "Brief overview of the project in business terms",
   "features": ["feature 1", "feature 2", ...],
   "technical_requirements": ["requirement 1", "requirement 2", ...],
   "clarifying_questions": [
     {
-      "question": "The question text",
-      "reason": "Why this question is important",
-      "category": "technical|functional|design|deployment"
+      "question": "Business-focused question text",
+      "reason": "Why this question is important for business success",
+      "category": "audience|goals|workflow|experience|priorities"
     }
   ],
   "estimated_complexity": "low|medium|high",
@@ -137,14 +151,19 @@ Use Australian English spelling (analyse, organise, colour, etc.) in all text.`;
         technical_requirements: [],
         clarifying_questions: [
           {
-            question: 'What is your preferred technology stack?',
-            reason: 'To ensure we use technologies you are comfortable with',
-            category: 'technical',
+            question: 'Who is the primary audience for this application?',
+            reason: 'To ensure we design the right user experience',
+            category: 'audience',
           },
           {
-            question: 'What is the expected scale/user load?',
-            reason: 'To design appropriate architecture',
-            category: 'technical',
+            question: 'What is the main problem this application solves for your users?',
+            reason: 'To focus on the most important features',
+            category: 'goals',
+          },
+          {
+            question: 'How do you envision users interacting with this application?',
+            reason: 'To create an intuitive workflow',
+            category: 'experience',
           },
         ],
         estimated_complexity: 'medium',

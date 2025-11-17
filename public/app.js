@@ -35,8 +35,17 @@ function initializeEventListeners() {
     const startBtn = document.getElementById('startBuildingBtn');
     if (startBtn) {
         startBtn.addEventListener('click', () => {
-            document.getElementById('hero').style.display = 'none';
-            document.getElementById('appSection').classList.remove('hidden');
+            const appSection = document.getElementById('appSection');
+            appSection.classList.remove('hidden');
+            
+            // Smooth scroll to app section
+            appSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            
+            // Hide hero after scroll animation
+            setTimeout(() => {
+                document.getElementById('hero').style.display = 'none';
+            }, 500);
+            
             showStage('uploadStep');
         });
     }
@@ -189,21 +198,33 @@ function handleFileSelect(event) {
     
     const file = files[0];
     const fileInfo = document.getElementById('fileInfo');
+    const uploadIndicator = document.getElementById('uploadingIndicator');
     
+    // Show file info
     fileInfo.innerHTML = `
         <strong>Selected:</strong> ${file.name} (${formatFileSize(file.size)})
     `;
     fileInfo.classList.remove('hidden');
     
+    // Show upload indicator immediately
+    if (uploadIndicator) uploadIndicator.classList.remove('hidden');
+    
     // Auto-upload and analyse
     uploadAndAnalyse(file);
+    
+    // Reset file input so same file can be selected again
+    event.target.value = '';
 }
 
 async function uploadAndAnalyse(file) {
     const uploadIndicator = document.getElementById('uploadingIndicator');
+    const fileInfo = document.getElementById('fileInfo');
+    
+    // Ensure upload indicator is visible
     if (uploadIndicator) uploadIndicator.classList.remove('hidden');
     
-    showStage('analysisStep');
+    // Don't switch to analysis step yet - wait for upload to complete
+    // showStage('analysisStep');
     
     // Extract project name from filename
     const projectName = file.name.replace(/\.[^/.]+$/, '').replace(/[-_]/g, ' ');
@@ -222,12 +243,24 @@ async function uploadAndAnalyse(file) {
         
         if (data.success) {
             state.projectId = data.project.id;
+            
+            // Hide upload indicator
+            if (uploadIndicator) uploadIndicator.classList.add('hidden');
+            
+            // Now switch to analysis step
+            showStage('analysisStep');
+            
+            // Start analysis
             await analyseProject();
         } else {
             throw new Error(data.message || 'Upload failed');
         }
     } catch (error) {
         console.error('Upload error:', error);
+        
+        // Hide upload indicator
+        if (uploadIndicator) uploadIndicator.classList.add('hidden');
+        
         showNotification('Upload failed: ' + error.message, 'error');
         showStage('uploadStep');
     }
@@ -413,6 +446,8 @@ async function startCodeGeneration() {
         const decoder = new TextDecoder();
         let buffer = '';
         let fileCount = 0;
+        let startTime = Date.now();
+        let totalCharsExpected = 50000; // Estimate based on typical app size
 
         while (true) {
             const { done, value } = await reader.read();
@@ -427,9 +462,24 @@ async function startCodeGeneration() {
                     try {
                         const data = JSON.parse(line.slice(6));
                         
-                        if (data.type === 'file') {
+                        if (data.type === 'progress' && data.length) {
+                            // Calculate percentage based on response length
+                            const percentage = Math.min(95, (data.length / totalCharsExpected) * 100);
+                            updateGenerationProgress({ 
+                                percentage: percentage,
+                                filesCreated: fileCount, 
+                                status: 'Generating code...',
+                                startTime: startTime
+                            });
+                        } else if (data.type === 'file') {
                             fileCount++;
-                            updateGenerationProgress({ filesCreated: fileCount, status: 'Creating ' + data.filename });
+                            const percentage = Math.min(95, fileCount * 10); // Rough estimate
+                            updateGenerationProgress({ 
+                                percentage: percentage,
+                                filesCreated: fileCount, 
+                                status: 'Creating ' + data.filename,
+                                startTime: startTime
+                            });
                         } else if (data.type === 'complete') {
                             updateGenerationProgress({ percentage: 100, filesCreated: data.fileCount, status: 'Complete!' });
                             state.generatedCode = { fileCount: data.fileCount };
@@ -462,18 +512,23 @@ function updateGenerationProgress(data) {
     if (filesCreated) filesCreated.textContent = data.filesCreated || '0';
     
     // Calculate and display time remaining
-    if (generationTimeRemaining && data.percentage) {
-        const estimatedTotal = 45; // seconds
-        const elapsed = (data.percentage / 100) * estimatedTotal;
+    if (generationTimeRemaining && data.percentage && data.startTime) {
+        const elapsed = (Date.now() - data.startTime) / 1000; // seconds
+        const percentComplete = Math.max(1, data.percentage); // Avoid division by zero
+        const estimatedTotal = (elapsed / percentComplete) * 100;
         const remaining = Math.max(0, estimatedTotal - elapsed);
         
         if (remaining > 60) {
             const mins = Math.floor(remaining / 60);
             const secs = Math.floor(remaining % 60);
             generationTimeRemaining.textContent = mins + ' min ' + secs + ' sec';
-        } else {
+        } else if (remaining > 0) {
             generationTimeRemaining.textContent = Math.floor(remaining) + ' sec';
+        } else {
+            generationTimeRemaining.textContent = 'Almost done...';
         }
+    } else if (generationTimeRemaining) {
+        generationTimeRemaining.textContent = 'Calculating...';
     }
     
     if (generationStatus && data.status) {
