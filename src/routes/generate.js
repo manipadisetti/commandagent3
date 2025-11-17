@@ -176,13 +176,14 @@ Use Australian English spelling (organise, colour, analyse, etc.) in all comment
       await fs.mkdir(appDir, { recursive: true });
 
       for (const file of generatedFiles) {
-        // Save to database (without file_path column)
+        // Save to database (with file_path column)
         await client.query(
-          `INSERT INTO generated_files (project_id, filename, file_type, content, created_at)
-           VALUES ($1, $2, $3, $4, NOW())`,
+          `INSERT INTO generated_files (project_id, filename, file_path, file_type, content, created_at)
+           VALUES ($1, $2, $3, $4, $5, NOW())`,
           [
             projectId,
             file.filename,
+            file.filename, // file_path is same as filename
             file.filename.split('.').pop(),
             file.content,
           ]
