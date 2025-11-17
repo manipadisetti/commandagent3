@@ -831,3 +831,4 @@ function closeDeploymentModal() {
     const modal = document.getElementById('deploymentModal');
     if (modal) modal.remove();
 }
+}
