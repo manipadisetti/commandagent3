@@ -346,10 +346,17 @@ ${fileList}
         });
         
         // Send error to frontend
-        res.write(`data: ${JSON.stringify({
+        const errorMessage = syntaxError.lineNumber 
+          ? `Syntax error in ${jsFile.filename} at line ${syntaxError.lineNumber}: ${syntaxError.message}`
+          : `Syntax error in ${jsFile.filename}: ${syntaxError.message}`;
+        
+        const errorData = JSON.stringify({
           type: 'error',
-          error: `Syntax error in ${jsFile.filename} at line ${syntaxError.lineNumber}: ${syntaxError.message}`,
-        })}\n\n`);
+          error: errorMessage,
+        });
+        
+        logger.info('Sending validation error to frontend', { projectId, errorMessage });
+        res.write(`data: ${errorData}\n\n`);
         
         // Mark project as failed
         await pool.query(
@@ -357,6 +364,7 @@ ${fileList}
           ['failed', projectId]
         );
         
+        logger.info('Ending response after validation error', { projectId });
         res.end();
         return;
       }
