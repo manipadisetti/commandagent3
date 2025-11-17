@@ -369,18 +369,46 @@ async function startCodeGeneration() {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 projectId: state.projectId,
-                analysis: state.analysis,
-                answers: state.answers
+                answers: state.answers,
+                preferences: {}
             })
         });
-        
-        const data = await response.json();
-        
-        if (data.success) {
-            state.generatedCode = data.code;
-            showStage('deploymentStep');
-        } else {
-            throw new Error(data.message || 'Generation failed');
+
+        if (!response.ok) {
+            throw new Error('Generation request failed');
+        }
+
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = '';
+        let fileCount = 0;
+
+        while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            
+            buffer += decoder.decode(value, { stream: true });
+            const lines = buffer.split('\n');
+            buffer = lines.pop();
+            
+            for (const line of lines) {
+                if (line.startsWith('data: ')) {
+                    try {
+                        const data = JSON.parse(line.slice(6));
+                        
+                        if (data.type === 'file') {
+                            fileCount++;
+                            updateGenerationProgress({ filesCreated: fileCount, status: 'Creating ' + data.filename });
+                        } else if (data.type === 'complete') {
+                            updateGenerationProgress({ percentage: 100, filesCreated: data.fileCount, status: 'Complete!' });
+                            state.generatedCode = { fileCount: data.fileCount };
+                            setTimeout(() => showStage('deploymentStep'), 1000);
+                        } else if (data.type === 'error') {
+                            throw new Error(data.error);
+                        }
+                    } catch (e) { }
+                }
+            }
         }
     } catch (error) {
         console.error('Generation error:', error);
@@ -435,7 +463,7 @@ async function pushToGitHub(repoName, token) {
             body: JSON.stringify({
                 projectId: state.projectId,
                 repoName: repoName,
-                token: token
+                githubToken: token
             })
         });
         

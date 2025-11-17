@@ -30,7 +30,7 @@ router.get('/:projectId', async (req, res) => {
 
     // Get generated files
     const filesResult = await pool.query(
-      'SELECT filename, file_path, content FROM generated_files WHERE project_id = $1',
+      'SELECT filename, content, file_type FROM generated_files WHERE project_id = $1',
       [projectId]
     );
 
