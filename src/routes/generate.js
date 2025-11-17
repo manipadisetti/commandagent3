@@ -147,18 +147,57 @@ The index.html MUST:
 - Have actual content visible immediately
 
 IMPORTANT: Format your response EXACTLY as a series of files using this structure:
-=== FILENAME: path/to/file.ext ===
-[file content here]
+
+=== FILENAME: index.html ===
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My App</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <h1>Hello World</h1>
+    <script src="app.js"></script>
+</body>
+</html>
 === END FILE ===
+
+=== FILENAME: style.css ===
+body {
+    font-family: Arial, sans-serif;
+}
+=== END FILE ===
+
+=== FILENAME: app.js ===
+'use strict';
+console.log('App loaded');
+=== END FILE ===
+
+⚠️ CRITICAL FILE GENERATION RULES:
+1. If index.html references <script src="app.js">, you MUST generate app.js
+2. If index.html references <link href="style.css">, you MUST generate style.css
+3. EVERY file referenced MUST be generated
+4. Use EXACT marker format: === FILENAME: filename.ext ===
+5. End EVERY file with: === END FILE ===
+6. Do NOT mix file contents together
+7. Do NOT put multiple files in one file block
 
 Make the code production-ready, well-commented, and follow best practices.
 Use Australian English spelling (organise, colour, analyse, etc.) in all comments and documentation.
 
-🔍 CRITICAL - READ CAREFULLY:
-- Generate WORKING, FUNCTIONAL code - not documentation
-- Code must EXECUTE, not be displayed as text
-- Use proper file structure with === FILENAME: === markers
-- Test that your code has no syntax errors
+🔍 FINAL CHECKLIST BEFORE GENERATING:
+1. ✅ Am I generating WORKING code (not documentation)?
+2. ✅ Does index.html have proper <!DOCTYPE html> and structure?
+3. ✅ If I reference app.js, did I generate app.js?
+4. ✅ If I reference style.css, did I generate style.css?
+5. ✅ Did I use EXACT marker format (=== FILENAME: ... ===)?
+6. ✅ Did I end each file with === END FILE ===?
+7. ✅ Is my JavaScript syntactically correct (no unterminated strings)?
+8. ✅ Will this app work immediately when opened in a browser?
+
+If you cannot answer YES to ALL 8 questions, DO NOT GENERATE - fix the issues first.
 
 REMEMBER: The user wants a WORKING APPLICATION, not a code tutorial!`;
 
@@ -220,6 +259,27 @@ REMEMBER: The user wants a WORKING APPLICATION, not a code tutorial!`;
       projectId,
       fileCount: generatedFiles.length,
       totalLength: fullResponse.length,
+    });
+    
+    // Log Gemini's raw output for debugging (first 500 and last 500 chars)
+    logger.debug('Gemini raw output (start)', {
+      projectId,
+      content: fullResponse.substring(0, 500),
+    });
+    logger.debug('Gemini raw output (end)', {
+      projectId,
+      content: fullResponse.substring(Math.max(0, fullResponse.length - 500)),
+    });
+    
+    // Log each parsed file for debugging
+    generatedFiles.forEach((file, index) => {
+      logger.debug('Parsed file', {
+        projectId,
+        index,
+        filename: file.filename,
+        contentLength: file.content.length,
+        contentStart: file.content.substring(0, 100),
+      });
     });
 
     // CRITICAL: Ensure index.html exists (fallback if Gemini didn't generate it)
@@ -303,6 +363,98 @@ ${fileList}
     }
     
     logger.info('All JavaScript files passed syntax validation', { projectId, jsFileCount: jsFiles.length });
+    
+    // VALIDATE HTML files for basic structure
+    const htmlFiles = generatedFiles.filter(f => f.filename.endsWith('.html'));
+    for (const htmlFile of htmlFiles) {
+      const content = htmlFile.content.toLowerCase();
+      
+      // Check for basic HTML structure
+      if (!content.includes('<!doctype') && !content.includes('<html')) {
+        logger.error('HTML validation failed: missing DOCTYPE or <html>', {
+          projectId,
+          filename: htmlFile.filename,
+        });
+        
+        res.write(`data: ${JSON.stringify({
+          type: 'error',
+          error: `Invalid HTML in ${htmlFile.filename}: missing DOCTYPE or <html> tag`,
+        })}\n\n`);
+        
+        await pool.query(
+          'UPDATE projects SET status = $1, updated_at = NOW() WHERE id = $2',
+          ['failed', projectId]
+        );
+        
+        res.end();
+        return;
+      }
+      
+      logger.info('HTML structure valid', { projectId, filename: htmlFile.filename });
+    }
+    
+    // VALIDATE file references in HTML
+    for (const htmlFile of htmlFiles) {
+      const content = htmlFile.content;
+      
+      // Extract script src references
+      const scriptMatches = content.matchAll(/<script[^>]+src=["']([^"']+)["']/gi);
+      for (const match of scriptMatches) {
+        const referencedFile = match[1];
+        const exists = generatedFiles.some(f => f.filename === referencedFile || f.filename.endsWith('/' + referencedFile));
+        
+        if (!exists) {
+          logger.error('Missing referenced file', {
+            projectId,
+            htmlFile: htmlFile.filename,
+            referencedFile,
+          });
+          
+          res.write(`data: ${JSON.stringify({
+            type: 'error',
+            error: `${htmlFile.filename} references ${referencedFile} but file was not generated`,
+          })}\n\n`);
+          
+          await pool.query(
+            'UPDATE projects SET status = $1, updated_at = NOW() WHERE id = $2',
+            ['failed', projectId]
+          );
+          
+          res.end();
+          return;
+        }
+      }
+      
+      // Extract link href references (CSS)
+      const linkMatches = content.matchAll(/<link[^>]+href=["']([^"']+\.css)["']/gi);
+      for (const match of linkMatches) {
+        const referencedFile = match[1];
+        const exists = generatedFiles.some(f => f.filename === referencedFile || f.filename.endsWith('/' + referencedFile));
+        
+        if (!exists) {
+          logger.error('Missing referenced CSS file', {
+            projectId,
+            htmlFile: htmlFile.filename,
+            referencedFile,
+          });
+          
+          res.write(`data: ${JSON.stringify({
+            type: 'error',
+            error: `${htmlFile.filename} references ${referencedFile} but file was not generated`,
+          })}\n\n`);
+          
+          await pool.query(
+            'UPDATE projects SET status = $1, updated_at = NOW() WHERE id = $2',
+            ['failed', projectId]
+          );
+          
+          res.end();
+          return;
+        }
+      }
+    }
+    
+    logger.info('All file references validated', { projectId, htmlFileCount: htmlFiles.length });
 
     // Save generated files to database AND filesystem
     const client = await pool.connect();
