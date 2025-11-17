@@ -109,23 +109,12 @@ CRITICAL REQUIREMENTS FOR index.html:
 - All JavaScript MUST be either inline or in separate .js files that work in browsers
 - Include all CSS either inline or in separate .css files
 
-Example of acceptable React approach:
-```html
-<!DOCTYPE html>
-<html>
-<head>
-  <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-</head>
-<body>
-  <div id="root"></div>
-  <script type="text/babel">
-    // React code here
-  </script>
-</body>
-</html>
-```
+Example of acceptable React approach (use CDN libraries):
+- Load React from unpkg.com CDN
+- Load ReactDOM from unpkg.com CDN  
+- Load Babel standalone for JSX
+- Write React code in script type="text/babel" tags
+- Everything in a single HTML file that works immediately
 
 The index.html file MUST work immediately when accessed via a web server without any build process.
 
