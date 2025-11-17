@@ -6,6 +6,9 @@ const router = express.Router();
 const fs = require('fs').promises;
 const path = require('path');
 const pool = require('../config/database');
+const { GoogleGenerativeAI } = require('@google/generative-ai');
+
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
 /**
  * POST /api/deploy-marketing
@@ -48,9 +51,48 @@ router.post('/', async (req, res) => {
             console.error('Failed to parse analysis_json:', parseError);
             analysisData = {};
         }
+        
+        // Generate compelling marketing copy with Gemini
+        const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash-exp' });
+        
+        const marketingPrompt = `Generate compelling marketing copy for this application.
+
+Project Name: ${project.name}
+Analysis: ${JSON.stringify(analysisData, null, 2)}
+
+Generate a JSON response with:
+{
+  "heroTitle": "Catchy title (max 60 chars)",
+  "heroSubtitle": "Compelling subtitle (max 150 chars)",
+  "aboutText": "Detailed description (2-3 sentences)",
+  "features": ["Feature 1", "Feature 2", "Feature 3", "Feature 4", "Feature 5", "Feature 6"],
+  "ctaText": "Call to action button text"
+}
+
+Use Australian English spelling. Make it professional and compelling.`;
+        
+        let marketingCopy = {};
+        try {
+            const result = await model.generateContent(marketingPrompt);
+            const text = result.response.text();
+            const jsonMatch = text.match(/\{[\s\S]*\}/);
+            if (jsonMatch) {
+                marketingCopy = JSON.parse(jsonMatch[0]);
+            }
+        } catch (error) {
+            console.error('Failed to generate marketing copy:', error);
+            // Use fallback
+            marketingCopy = {
+                heroTitle: project.name,
+                heroSubtitle: analysisData.summary || 'A powerful application built with AI',
+                aboutText: analysisData.summary || 'A powerful application built with AI',
+                features: analysisData.features || ['Feature 1', 'Feature 2', 'Feature 3'],
+                ctaText: 'Get Started'
+            };
+        }
 
         // Generate marketing website HTML
-        const marketingHTML = generateMarketingWebsite(project, analysisData, baseUrl);
+        const marketingHTML = generateMarketingWebsite(project, analysisData, marketingCopy, baseUrl);
 
         // Create marketing website directory
         const marketingDir = path.join(__dirname, '../../public/downloads', `marketing-${projectId}`);
@@ -120,10 +162,12 @@ router.post('/', async (req, res) => {
 /**
  * Generate marketing website HTML
  */
-function generateMarketingWebsite(project, analysis, baseUrl) {
-    const projectName = project.name || 'Your Application';
-    const description = analysis.summary || 'A powerful application built with AI';
-    const features = analysis.features || [];
+function generateMarketingWebsite(project, analysis, marketingCopy, baseUrl) {
+    const projectName = marketingCopy.heroTitle || project.name || 'Your Application';
+    const heroSubtitle = marketingCopy.heroSubtitle || 'A powerful application built with AI';
+    const aboutText = marketingCopy.aboutText || marketingCopy.heroSubtitle || 'A powerful application built with AI';
+    const features = marketingCopy.features || analysis.features || [];
+    const ctaText = marketingCopy.ctaText || 'Get Started';
     const techStack = analysis.recommended_tech_stack || [];
 
     // Build app URL with BASE_URL
@@ -143,10 +187,10 @@ function generateMarketingWebsite(project, analysis, baseUrl) {
     <header class="hero">
         <div class="container">
             <h1 class="hero-title">${projectName}</h1>
-            <p class="hero-subtitle">${description}</p>
+            <p class="hero-subtitle">${heroSubtitle}</p>
             <div class="cta-buttons">
                 <a href="#features" class="btn btn-primary">Explore Features</a>
-                <a href="${appUrl}" class="btn btn-secondary">Launch Application</a>
+                <a href="${appUrl}" class="btn btn-secondary">${ctaText}</a>
             </div>
         </div>
     </header>
@@ -155,7 +199,7 @@ function generateMarketingWebsite(project, analysis, baseUrl) {
     <section class="about">
         <div class="container">
             <h2 class="section-title">About ${projectName}</h2>
-            <p class="section-intro">${description}</p>
+            <p class="section-intro">${aboutText}</p>
         </div>
     </section>
 

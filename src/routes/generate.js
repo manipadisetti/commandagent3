@@ -91,32 +91,51 @@ ${Object.keys(context.answers).length > 0 ? `User Answers:\n${JSON.stringify(con
 
 ${Object.keys(context.preferences).length > 0 ? `Preferences:\n${JSON.stringify(context.preferences, null, 2)}` : ''}
 
-Generate a complete application with:
-1. index.html - A STANDALONE HTML file that works immediately in the browser
-2. All necessary CSS in separate files or inline
-3. JavaScript files that work without build tools (vanilla JS or CDN libraries)
-4. Configuration files (package.json, .env.example, etc.) for backend if needed
-5. README.md with setup instructions
-6. Database schema (if needed)
-7. API documentation (if applicable)
+CRITICAL: Generate a SINGLE-FILE APPLICATION or simple multi-file app that works IMMEDIATELY in a browser.
 
-CRITICAL REQUIREMENTS FOR index.html:
-- MUST be a complete, working HTML file in the root directory
-- MUST work when opened directly in a browser (no build step)
-- Use vanilla JavaScript or CDN-hosted libraries (React via CDN, Vue via CDN, etc.)
-- If using React, use React from CDN with Babel standalone for JSX
-- DO NOT generate JSX files that need webpack/vite/create-react-app
-- All JavaScript MUST be either inline or in separate .js files that work in browsers
-- Include all CSS either inline or in separate .css files
+🚫 ABSOLUTELY FORBIDDEN (DO NOT GENERATE):
+- React project structure with frontend/ and backend/ folders
+- package.json with "react-scripts" or "vite" or "webpack"
+- JSX files (.jsx) that need compilation
+- TypeScript files (.tsx, .ts)
+- Any "npm run build" or build process
+- create-react-app structure
+- Vite structure
+- Next.js structure
+- Any framework that requires compilation
 
-Example of acceptable React approach (use CDN libraries):
-- Load React from unpkg.com CDN
-- Load ReactDOM from unpkg.com CDN  
-- Load Babel standalone for JSX
-- Write React code in script type="text/babel" tags
-- Everything in a single HTML file that works immediately
+✅ REQUIRED: Generate ONE of these approaches:
 
-The index.html file MUST work immediately when accessed via a web server without any build process.
+OPTION 1 (PREFERRED): Single HTML file with everything inline
+- index.html with inline CSS and JavaScript
+- Uses vanilla JavaScript or CDN libraries
+- Works immediately when opened in browser
+
+OPTION 2: Simple multi-file app
+- index.html (main file)
+- style.css (styling)
+- app.js (vanilla JavaScript)
+- All files work without build tools
+
+OPTION 3: CDN-based React (if React is absolutely necessary)
+- Single index.html file
+- React loaded from CDN (unpkg.com)
+- Babel standalone for JSX
+- All code in <script type="text/babel"> tags
+- NO separate .jsx files
+
+Generate these files:
+1. index.html - MUST work immediately in browser
+2. style.css (optional, can be inline)
+3. app.js (optional, can be inline)
+4. README.md with instructions
+
+The index.html MUST:
+- Be in the root directory (not in frontend/ or public/)
+- Work when accessed via http://localhost/index.html
+- NOT require npm install, npm run build, or any build step
+- NOT have <div id="root"></div> unless using CDN React
+- Have actual content visible immediately
 
 IMPORTANT: Format your response EXACTLY as a series of files using this structure:
 === FILENAME: path/to/file.ext ===
