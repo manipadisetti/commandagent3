@@ -533,7 +533,14 @@ async function startCodeGeneration() {
                         } else if (data.type === 'error') {
                             throw new Error(data.error);
                         }
-                    } catch (e) { }
+                    } catch (e) {
+                        // Only catch JSON parse errors (malformed SSE messages)
+                        // Re-throw all other errors (including validation errors)
+                        if (!(e instanceof SyntaxError)) {
+                            throw e;
+                        }
+                        // Malformed JSON, skip this line and continue
+                    }
                 }
             }
         }
