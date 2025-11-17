@@ -262,18 +262,18 @@ REMEMBER: The user wants a WORKING APPLICATION, not a code tutorial!`;
     });
     
     // Log Gemini's raw output for debugging (first 500 and last 500 chars)
-    logger.debug('Gemini raw output (start)', {
+    logger.info('Gemini raw output (start)', {
       projectId,
       content: fullResponse.substring(0, 500),
     });
-    logger.debug('Gemini raw output (end)', {
+    logger.info('Gemini raw output (end)', {
       projectId,
       content: fullResponse.substring(Math.max(0, fullResponse.length - 500)),
     });
     
     // Log each parsed file for debugging
     generatedFiles.forEach((file, index) => {
-      logger.debug('Parsed file', {
+      logger.info('Parsed file', {
         projectId,
         index,
         filename: file.filename,
