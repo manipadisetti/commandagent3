@@ -190,7 +190,7 @@ async function uploadAndAnalyse(file) {
         const data = await response.json();
         
         if (data.success) {
-            state.projectId = data.projectId;
+            state.projectId = data.project.id;
             await analyseProject();
         } else {
             throw new Error(data.message || 'Upload failed');
