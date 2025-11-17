@@ -288,7 +288,7 @@ ${fileList}
         // Send error to frontend
         res.write(`data: ${JSON.stringify({
           type: 'error',
-          message: `Syntax error in ${jsFile.filename} at line ${syntaxError.lineNumber}: ${syntaxError.message}`,
+          error: `Syntax error in ${jsFile.filename} at line ${syntaxError.lineNumber}: ${syntaxError.message}`,
         })}\n\n`);
         
         // Mark project as failed
@@ -297,7 +297,6 @@ ${fileList}
           ['failed', projectId]
         );
         
-        res.write(`data: ${JSON.stringify({ type: 'done', success: false, error: 'Syntax validation failed' })}\n\n`);
         res.end();
         return;
       }
