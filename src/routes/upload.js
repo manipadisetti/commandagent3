@@ -85,10 +85,29 @@ router.post('/', upload.array('files', 10), async (req, res) => {
 
     await client.query('BEGIN');
 
-    // Create project
-    const projectName = req.body.projectName || `Project ${Date.now()}`;
+    // Create project with unique name
+    let baseProjectName = req.body.projectName || `Project ${Date.now()}`;
     const projectDescription = req.body.projectDescription || '';
     const projectType = req.body.projectType || 'application';
+    
+    // Check if project name exists and make it unique
+    let projectName = baseProjectName;
+    let attempt = 0;
+    let nameExists = true;
+    
+    while (nameExists && attempt < 100) {
+      const checkResult = await client.query(
+        'SELECT id FROM projects WHERE name = $1',
+        [projectName]
+      );
+      
+      if (checkResult.rows.length === 0) {
+        nameExists = false;
+      } else {
+        attempt++;
+        projectName = `${baseProjectName} (${attempt})`;
+      }
+    }
 
     const projectResult = await client.query(
       `INSERT INTO projects (name, description, project_type, status, created_at, updated_at)
