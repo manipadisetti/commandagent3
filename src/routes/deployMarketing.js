@@ -63,6 +63,26 @@ router.post('/', async (req, res) => {
             generateMarketingCSS()
         );
 
+        // Deploy application files to /preview/app-X/
+        const appDir = path.join(__dirname, '../../public/downloads', `app-${projectId}`);
+        await fs.mkdir(appDir, { recursive: true });
+
+        // Get all generated files from database
+        const filesResult = await pool.query(
+            'SELECT filename, content FROM generated_files WHERE project_id = $1',
+            [projectId]
+        );
+
+        // Write each file to the app directory
+        for (const file of filesResult.rows) {
+            const filePath = path.join(appDir, file.filename);
+            const fileDir = path.dirname(filePath);
+            
+            // Create subdirectories if needed
+            await fs.mkdir(fileDir, { recursive: true });
+            await fs.writeFile(filePath, file.content, 'utf8');
+        }
+
         // Build deployment URLs with BASE_URL
         const deploymentUrls = {
             marketing: `${baseUrl}/preview/marketing-${projectId}/`,

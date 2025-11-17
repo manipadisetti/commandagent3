@@ -549,8 +549,8 @@ async function deployMarketingWebsite() {
             state.deploymentUrls = data.urls;
             showNotification('Deployment successful!', 'success');
             
-            // Show deployed URLs
-            alert(`Your application is live!\n\nMarketing Website: ${data.urls.marketing}\nApplication: ${data.urls.app}`);
+            // Show deployed URLs in a proper modal
+            showDeploymentModal(data.urls.marketing, data.urls.app);
         } else {
             throw new Error(data.message || 'Deployment failed');
         }
@@ -638,4 +638,71 @@ function showLoadingOverlay(message) {
 function hideLoadingOverlay() {
     const overlay = document.getElementById('loadingOverlay');
     if (overlay) overlay.classList.add('hidden');
+}
+
+function showDeploymentModal(marketingUrl, appUrl) {
+    // Create modal HTML
+    const modalHTML = `
+        <div id="deploymentModal" style="
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 10000;
+        ">
+            <div style="
+                background: white;
+                padding: 2rem;
+                border-radius: 8px;
+                max-width: 500px;
+                width: 90%;
+                box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            ">
+                <h2 style="margin: 0 0 1rem 0; color: #1a1a1a;">🎉 Your Application is Live!</h2>
+                <p style="margin: 0 0 1.5rem 0; color: #666;">Your marketing website and application have been deployed successfully.</p>
+                
+                <div style="margin-bottom: 1rem;">
+                    <strong style="color: #333;">Marketing Website:</strong><br>
+                    <a href="${marketingUrl}" target="_blank" style="
+                        color: #3b82f6;
+                        text-decoration: none;
+                        word-break: break-all;
+                    ">${marketingUrl}</a>
+                </div>
+                
+                <div style="margin-bottom: 1.5rem;">
+                    <strong style="color: #333;">Application:</strong><br>
+                    <a href="${appUrl}" target="_blank" style="
+                        color: #3b82f6;
+                        text-decoration: none;
+                        word-break: break-all;
+                    ">${appUrl}</a>
+                </div>
+                
+                <button onclick="closeDeploymentModal()" style="
+                    background: #3b82f6;
+                    color: white;
+                    border: none;
+                    padding: 0.75rem 1.5rem;
+                    border-radius: 4px;
+                    cursor: pointer;
+                    font-size: 1rem;
+                    width: 100%;
+                ">OK</button>
+            </div>
+        </div>
+    `;
+    
+    // Add modal to page
+    document.body.insertAdjacentHTML('beforeend', modalHTML);
+}
+
+function closeDeploymentModal() {
+    const modal = document.getElementById('deploymentModal');
+    if (modal) modal.remove();
 }
