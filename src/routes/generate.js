@@ -183,6 +183,9 @@ console.log('App loaded');
 5. End EVERY file with: === END FILE ===
 6. Do NOT mix file contents together
 7. Do NOT put multiple files in one file block
+8. JavaScript files (.js) must contain ONLY JavaScript code - NO markdown, NO comments with *, NO documentation
+9. CSS files (.css) must contain ONLY CSS code - NO markdown, NO documentation
+10. Put ALL documentation, usage instructions, and markdown in README.md ONLY
 
 Make the code production-ready, well-commented, and follow best practices.
 Use Australian English spelling (organise, colour, analyse, etc.) in all comments and documentation.
@@ -194,10 +197,13 @@ Use Australian English spelling (organise, colour, analyse, etc.) in all comment
 4. ✅ If I reference style.css, did I generate style.css?
 5. ✅ Did I use EXACT marker format (=== FILENAME: ... ===)?
 6. ✅ Did I end each file with === END FILE ===?
-7. ✅ Is my JavaScript syntactically correct (no unterminated strings)?
-8. ✅ Will this app work immediately when opened in a browser?
+7. ✅ Is my JavaScript syntactically correct (no unterminated strings, no markdown)?
+8. ✅ Does app.js contain ONLY JavaScript code (no *, no markdown lists)?
+9. ✅ Does style.css contain ONLY CSS code (no markdown)?
+10. ✅ Is ALL documentation in README.md (not in code files)?
+11. ✅ Will this app work immediately when opened in a browser?
 
-If you cannot answer YES to ALL 8 questions, DO NOT GENERATE - fix the issues first.
+If you cannot answer YES to ALL 11 questions, DO NOT GENERATE - fix the issues first.
 
 REMEMBER: The user wants a WORKING APPLICATION, not a code tutorial!`;
 
