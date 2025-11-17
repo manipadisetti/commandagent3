@@ -162,6 +162,7 @@ Use Australian English spelling (analyse, organise, colour, etc.) in all text.`;
       success: true,
       projectId,
       analysis,
+      questions: analysis.clarifying_questions || [],
       message: 'Analysis completed successfully',
     };
 
