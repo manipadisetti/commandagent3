@@ -1,14 +1,13 @@
 const express = require('express');
-const Anthropic = require('@anthropic-ai/sdk');
+const { GoogleGenerativeAI } = require('@google/generative-ai');
 const { pool } = require('../config/database');
 const { cacheGet, cacheSet } = require('../config/redis');
 const logger = require('../config/logger');
 
 const router = express.Router();
 
-const anthropic = new Anthropic({
-  apiKey: process.env.ANTHROPIC_API_KEY,
-});
+// Initialise Gemini AI
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
 // POST /api/analyse - Analyse requirements and generate clarifying questions
 router.post('/', async (req, res) => {
@@ -17,6 +16,11 @@ router.post('/', async (req, res) => {
 
   try {
     logger.info('Analysis request received', { projectId });
+
+    // Validate API key
+    if (!process.env.GEMINI_API_KEY) {
+      throw new Error('GEMINI_API_KEY environment variable is not set');
+    }
 
     if (!projectId) {
       return res.status(400).json({
@@ -65,20 +69,16 @@ router.post('/', async (req, res) => {
       .map((doc) => `=== ${doc.filename} ===\n${doc.content}`)
       .join('\n\n');
 
-    logger.info('Sending to Claude for analysis', {
+    logger.info('Sending to Gemini for analysis', {
       projectId,
       documentCount: documentsResult.rows.length,
       contentLength: combinedContent.length,
     });
 
-    // Send to Claude for analysis
-    const message = await anthropic.messages.create({
-      model: 'claude-sonnet-4-20250514',
-      max_tokens: 4096,
-      messages: [
-        {
-          role: 'user',
-          content: `You are an expert software requirements analyst. Analyze the following requirements documents and provide:
+    // Send to Gemini for analysis
+    const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash-exp' });
+
+    const prompt = `You are an expert software requirements analyst. Analyse the following requirements documents and provide:
 
 1. A comprehensive summary of what needs to be built
 2. Key features and functionality identified
@@ -88,7 +88,7 @@ router.post('/', async (req, res) => {
 Requirements Documents:
 ${combinedContent}
 
-Please respond in JSON format:
+Please respond in JSON format ONLY (no markdown, no code blocks):
 {
   "summary": "Brief overview of the project",
   "features": ["feature 1", "feature 2", ...],
@@ -102,25 +102,33 @@ Please respond in JSON format:
   ],
   "estimated_complexity": "low|medium|high",
   "recommended_tech_stack": ["tech 1", "tech 2", ...]
-}`,
-        },
-      ],
-    });
+}
 
-    const analysisText = message.content[0].text;
+Use Australian English spelling (analyse, organise, colour, etc.) in all text.`;
+
+    const result = await model.generateContent(prompt);
+    const response = await result.response;
+    const analysisText = response.text();
     let analysis;
 
     try {
-      // Try to parse as JSON
-      const jsonMatch = analysisText.match(/\{[\s\S]*\}/);
+      // Try to parse as JSON - remove markdown code blocks if present
+      let jsonText = analysisText.trim();
+      
+      // Remove markdown code blocks
+      jsonText = jsonText.replace(/```json\s*/g, '').replace(/```\s*/g, '');
+      
+      // Extract JSON object
+      const jsonMatch = jsonText.match(/\{[\s\S]*\}/);
       if (jsonMatch) {
         analysis = JSON.parse(jsonMatch[0]);
       } else {
         throw new Error('No JSON found in response');
       }
     } catch (parseError) {
-      logger.warn('Failed to parse Claude response as JSON', {
+      logger.warn('Failed to parse Gemini response as JSON', {
         error: parseError.message,
+        response: analysisText.substring(0, 500),
       });
       // Fallback: create structured response from text
       analysis = {
@@ -150,7 +158,7 @@ Please respond in JSON format:
       [JSON.stringify(analysis), projectId]
     );
 
-    const response = {
+    const responseData = {
       success: true,
       projectId,
       analysis,
@@ -158,12 +166,12 @@ Please respond in JSON format:
     };
 
     // Cache the result
-    await cacheSet(cacheKey, JSON.stringify(response), 3600); // 1 hour
+    await cacheSet(cacheKey, JSON.stringify(responseData), 3600); // 1 hour
 
     const duration = Date.now() - startTime;
     logger.info('Analysis completed', { projectId, duration: `${duration}ms` });
 
-    res.json(response);
+    res.json(responseData);
   } catch (error) {
     logger.error('Analysis failed', {
       projectId,

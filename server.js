@@ -25,6 +25,8 @@ const generateRoute = require('./src/routes/generate');
 const chatRoute = require('./src/routes/chat');
 const downloadRoute = require('./src/routes/download');
 const githubRoute = require('./src/routes/github');
+const knowledgeGraphRoute = require('./src/routes/knowledgeGraph');
+const deployMarketingRoute = require('./src/routes/deployMarketing');
 
 const app = express();
 const server = http.createServer(app);
@@ -36,6 +38,9 @@ const io = new Server(server, {
 });
 
 const PORT = process.env.PORT || 4004;
+
+// Trust proxy - required for Coolify/Traefik deployment
+app.set('trust proxy', 1);
 
 // Middleware
 app.use(helmet({
@@ -62,6 +67,9 @@ app.use('/api/', limiter);
 
 // Serve static files
 app.use(express.static(path.join(__dirname, 'public')));
+
+// Serve preview/deployed applications
+app.use('/preview', express.static(path.join(__dirname, 'public/downloads')));
 
 // Health check endpoint
 app.get('/api/health', async (req, res) => {
@@ -96,6 +104,8 @@ app.use('/api/generate', generateRoute);
 app.use('/api/chat', chatRoute);
 app.use('/api/download', downloadRoute);
 app.use('/api/github', githubRoute);
+app.use('/api/knowledge-graph', knowledgeGraphRoute);
+app.use('/api/deploy-marketing', deployMarketingRoute);
 
 // Get all projects
 app.get('/api/projects', async (req, res) => {
@@ -225,6 +235,7 @@ async function startServer() {
 ║    POST   /api/chat            Chat about project         ║
 ║    GET    /api/download/:id    Download ZIP               ║
 ║    POST   /api/github/push     Push to GitHub             ║
+║    POST   /api/deploy-marketing Deploy marketing site     ║
 ║    GET    /api/projects        List all projects          ║
 ║    GET    /api/health          Health check               ║
 ║                                                            ║
