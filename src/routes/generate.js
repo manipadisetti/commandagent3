@@ -126,47 +126,45 @@ OPTION 2: Simple multi-file app
 6. Validate all DOM selectors exist before use
 
 ✅ CORRECT JAVASCRIPT EXAMPLE:
-```javascript
-'use strict';
 
-document.addEventListener('DOMContentLoaded', function() {
-    const addButton = document.getElementById('add-btn');
-    const input = document.getElementById('task-input');
-    const list = document.getElementById('task-list');
+    'use strict';
     
-    if (!addButton || !input || !list) {
-        console.error('Required elements not found');
-        return;
-    }
-    
-    addButton.addEventListener('click', function() {
-        const task = input.value.trim();
-        if (task) {
-            const li = document.createElement('li');
-            li.textContent = task;
-            list.appendChild(li);
-            input.value = '';
+    document.addEventListener('DOMContentLoaded', function() {
+        const addButton = document.getElementById('add-btn');
+        const input = document.getElementById('task-input');
+        const list = document.getElementById('task-list');
+        
+        if (!addButton || !input || !list) {
+            console.error('Required elements not found');
+            return;
         }
+        
+        addButton.addEventListener('click', function() {
+            const task = input.value.trim();
+            if (task) {
+                const li = document.createElement('li');
+                li.textContent = task;
+                list.appendChild(li);
+                input.value = '';
+            }
+        });
     });
-});
-```
 
 ❌ WRONG - DO NOT GENERATE:
-```javascript
-// Missing quotes
-const message = Hello world;
 
-// Unterminated string
-const text = 'This is broken
-
-// Missing closing brace
-function broken() {
-    console.log('test');
-
-// No event listener
-const btn = document.getElementById('btn');
-// btn.addEventListener is never called!
-```
+    // Missing quotes
+    const message = Hello world;
+    
+    // Unterminated string
+    const text = 'This is broken
+    
+    // Missing closing brace
+    function broken() {
+        console.log('test');
+    
+    // No event listener
+    const btn = document.getElementById('btn');
+    // btn.addEventListener is never called!
 
 OPTION 3: CDN-based React (if React is absolutely necessary)
 - Single index.html file
