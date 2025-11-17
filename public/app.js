@@ -150,9 +150,33 @@ function showStage(stageId) {
         targetStage.classList.add('active');
         state.currentStage = stageId;
         
+        // Update step numbers dynamically
+        updateStepNumbers();
+        
         // Scroll to top
         window.scrollTo({ top: 0, behavior: 'smooth' });
     }
+}
+
+function updateStepNumbers() {
+    const stepOrder = ['uploadStep', 'analysisStep', 'questionsStep', 'confirmationStep', 'knowledgeGraphStep', 'generationStep', 'deploymentStep'];
+    const stepElements = document.querySelectorAll('.step-number');
+    let currentStep = 1;
+    
+    stepOrder.forEach((stepId, index) => {
+        const stepEl = document.getElementById(stepId);
+        const numberEl = stepEl ? stepEl.querySelector('.step-number') : null;
+        
+        if (numberEl) {
+            // Skip questions step if no questions
+            if (stepId === 'questionsStep' && state.questions.length === 0) {
+                return; // Don't increment, skip this step
+            }
+            
+            numberEl.textContent = 'Step ' + currentStep;
+            currentStep++;
+        }
+    });
 }
 
 // ============================================================================
@@ -176,6 +200,9 @@ function handleFileSelect(event) {
 }
 
 async function uploadAndAnalyse(file) {
+    const uploadIndicator = document.getElementById('uploadingIndicator');
+    if (uploadIndicator) uploadIndicator.classList.remove('hidden');
+    
     showStage('analysisStep');
     
     const formData = new FormData();
@@ -420,14 +447,35 @@ function updateGenerationProgress(data) {
     const progressFill = document.getElementById('generationProgressFill');
     const generationProgress = document.getElementById('generationProgress');
     const filesCreated = document.getElementById('filesCreated');
-    const linesOfCode = document.getElementById('linesOfCode');
+    const generationTimeRemaining = document.getElementById('generationTimeRemaining');
     const generationStatus = document.getElementById('generationStatus');
     
-    if (progressFill) progressFill.style.width = data.percentage + '%';
-    if (generationProgress) generationProgress.textContent = data.percentage + '%';
+    // Format percentage to 2 decimal places
+    const percentage = data.percentage !== undefined ? Number(data.percentage).toFixed(2) : '0.00';
+    
+    if (progressFill) progressFill.style.width = percentage + '%';
+    if (generationProgress) generationProgress.textContent = percentage + '%';
     if (filesCreated) filesCreated.textContent = data.filesCreated || '0';
-    if (linesOfCode) linesOfCode.textContent = data.linesOfCode || '0';
-    if (generationStatus) generationStatus.textContent = data.status || 'Generating code...';
+    
+    // Calculate and display time remaining
+    if (generationTimeRemaining && data.percentage) {
+        const estimatedTotal = 45; // seconds
+        const elapsed = (data.percentage / 100) * estimatedTotal;
+        const remaining = Math.max(0, estimatedTotal - elapsed);
+        
+        if (remaining > 60) {
+            const mins = Math.floor(remaining / 60);
+            const secs = Math.floor(remaining % 60);
+            generationTimeRemaining.textContent = mins + ' min ' + secs + ' sec';
+        } else {
+            generationTimeRemaining.textContent = Math.floor(remaining) + ' sec';
+        }
+    }
+    
+    if (generationStatus && data.status) {
+        const statusText = generationStatus.querySelector('span');
+        if (statusText) statusText.textContent = data.status;
+    }
 }
 
 function handleGenerationComplete(data) {

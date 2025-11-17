@@ -26,10 +26,10 @@
     <section id="appSection" class="app-section hidden">
         <div class="container">
             
-            <!-- Step 1: Upload -->
+            <!-- Step: Upload -->
             <div id="uploadStep" class="step active">
                 <div class="stage-header">
-                    <h2>Step 1: Upload Your Requirements</h2>
+                    <h2><span class="step-number">Step 1</span>: Upload Your Requirements</h2>
                     <p>Upload a document describing what you want to build (.txt, .md, .pdf, .docx)</p>
                 </div>
                 <div class="workflow-stage">
@@ -41,13 +41,17 @@
                         <button class="browse-button" onclick="document.getElementById('fileInput').click()">Browse Files</button>
                     </div>
                     <div id="fileInfo" class="file-info hidden"></div>
+                    <div id="uploadingIndicator" class="uploading-indicator hidden">
+                        <div class="spinner-small"></div>
+                        <span>Uploading and preparing your file...</span>
+                    </div>
                 </div>
             </div>
 
-            <!-- Step 2: Analysis Progress -->
+            <!-- Step: Analysis Progress -->
             <div id="analysisStep" class="step">
                 <div class="stage-header">
-                    <h2>Step 2: Analysing Your Requirements</h2>
+                    <h2><span class="step-number">Step 2</span>: Analysing Your Requirements</h2>
                     <p>Our AI is reading and understanding your project...</p>
                 </div>
                 <div class="workflow-stage">
@@ -77,10 +81,10 @@
                 </div>
             </div>
 
-            <!-- Step 3: Questions -->
+            <!-- Step: Questions -->
             <div id="questionsStep" class="step">
                 <div class="stage-header">
-                    <h2>Step 3: Clarifying Questions</h2>
+                    <h2><span class="step-number">Step 3</span>: Clarifying Questions</h2>
                     <p>Help us understand your project better by answering these questions</p>
                 </div>
                 <div class="workflow-stage">
@@ -91,10 +95,10 @@
                 </div>
             </div>
 
-            <!-- Step 4: Understanding Confirmation -->
+            <!-- Step: Understanding Confirmation -->
             <div id="confirmationStep" class="step">
                 <div class="stage-header">
-                    <h2>Step 4: Confirm Our Understanding</h2>
+                    <h2><span class="step-number">Step 4</span>: Confirm Our Understanding</h2>
                     <p>Here's what we understand about your project</p>
                 </div>
                 <div class="workflow-stage">
@@ -106,10 +110,10 @@
                 </div>
             </div>
 
-            <!-- Step 5: Knowledge Graph -->
+            <!-- Step: Knowledge Graph -->
             <div id="knowledgeGraphStep" class="step">
                 <div class="stage-header">
-                    <h2>Step 5: Project Knowledge Graph</h2>
+                    <h2><span class="step-number">Step 5</span>: Project Knowledge Graph</h2>
                     <p>Visual representation of how your application will work</p>
                 </div>
                 <div class="workflow-stage">
@@ -120,10 +124,10 @@
                 </div>
             </div>
 
-            <!-- Step 6: Code Generation -->
+            <!-- Step: Code Generation -->
             <div id="generationStep" class="step">
                 <div class="stage-header">
-                    <h2>Step 6: Generating Your Application</h2>
+                    <h2><span class="step-number">Step 6</span>: Generating Your Application</h2>
                     <p>Creating production-ready code...</p>
                 </div>
                 <div class="workflow-stage">
@@ -131,15 +135,15 @@
                         <div class="progress-stats">
                             <div class="stat">
                                 <span class="stat-label">Progress</span>
-                                <span class="stat-value" id="generationProgress">0%</span>
+                                <span class="stat-value" id="generationProgress">0.00%</span>
+                            </div>
+                            <div class="stat">
+                                <span class="stat-label">Time Remaining</span>
+                                <span class="stat-value" id="generationTimeRemaining">Calculating...</span>
                             </div>
                             <div class="stat">
                                 <span class="stat-label">Files Created</span>
                                 <span class="stat-value" id="filesCreated">0</span>
-                            </div>
-                            <div class="stat">
-                                <span class="stat-label">Lines of Code</span>
-                                <span class="stat-value" id="linesOfCode">0</span>
                             </div>
                         </div>
                         <div class="progress-bar">
@@ -153,10 +157,10 @@
                 </div>
             </div>
 
-            <!-- Step 7: Deployment Options -->
+            <!-- Step: Deployment Options -->
             <div id="deploymentStep" class="step">
                 <div class="stage-header">
-                    <h2>Step 7: Your Application is Ready!</h2>
+                    <h2><span class="step-number">Step 7</span>: Your Application is Ready!</h2>
                     <p>Choose how you'd like to deploy your application</p>
                 </div>
                 <div class="workflow-stage">
