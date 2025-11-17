@@ -117,54 +117,14 @@ OPTION 2: Simple multi-file app
 - app.js (vanilla JavaScript)
 - All files work without build tools
 
-⚠️ CRITICAL JAVASCRIPT REQUIREMENTS:
-1. ALL strings must use proper quotes - NO unterminated strings
-2. ALL functions must have closing braces
-3. ALL event listeners must be properly attached
-4. Test your JavaScript mentally - execute every line
-5. Use strict mode: 'use strict';
-6. Validate all DOM selectors exist before use
-
-✅ CORRECT JAVASCRIPT EXAMPLE:
-
-    'use strict';
-    
-    document.addEventListener('DOMContentLoaded', function() {
-        const addButton = document.getElementById('add-btn');
-        const input = document.getElementById('task-input');
-        const list = document.getElementById('task-list');
-        
-        if (!addButton || !input || !list) {
-            console.error('Required elements not found');
-            return;
-        }
-        
-        addButton.addEventListener('click', function() {
-            const task = input.value.trim();
-            if (task) {
-                const li = document.createElement('li');
-                li.textContent = task;
-                list.appendChild(li);
-                input.value = '';
-            }
-        });
-    });
-
-❌ WRONG - DO NOT GENERATE:
-
-    // Missing quotes
-    const message = Hello world;
-    
-    // Unterminated string
-    const text = 'This is broken
-    
-    // Missing closing brace
-    function broken() {
-        console.log('test');
-    
-    // No event listener
-    const btn = document.getElementById('btn');
-    // btn.addEventListener is never called!
+⚠️ CRITICAL REQUIREMENTS:
+1. Generate ACTUAL WORKING CODE FILES - not documentation or tutorials
+2. DO NOT display code as text on the page - code must be in <script> tags or separate .js files
+3. DO NOT create a page that shows CSS/JavaScript code as visible text
+4. The application must be FUNCTIONAL and INTERACTIVE
+5. All JavaScript must use proper syntax (quoted strings, closed braces, attached event listeners)
+6. Use 'use strict'; at the top of JavaScript files
+7. Validate DOM elements exist before using them
 
 OPTION 3: CDN-based React (if React is absolutely necessary)
 - Single index.html file
@@ -194,14 +154,13 @@ IMPORTANT: Format your response EXACTLY as a series of files using this structur
 Make the code production-ready, well-commented, and follow best practices.
 Use Australian English spelling (organise, colour, analyse, etc.) in all comments and documentation.
 
-🔍 BEFORE GENERATING - MENTAL CHECKLIST:
-1. ✅ All strings properly quoted?
-2. ✅ All functions have closing braces?
-3. ✅ All event listeners attached to elements?
-4. ✅ All DOM elements exist before use?
-5. ✅ No syntax errors when mentally executing code?
+🔍 CRITICAL - READ CAREFULLY:
+- Generate WORKING, FUNCTIONAL code - not documentation
+- Code must EXECUTE, not be displayed as text
+- Use proper file structure with === FILENAME: === markers
+- Test that your code has no syntax errors
 
-If you cannot answer YES to all 5, DO NOT GENERATE - fix the code first.`;
+REMEMBER: The user wants a WORKING APPLICATION, not a code tutorial!`;
 
     const result = await model.generateContentStream(prompt);
 
