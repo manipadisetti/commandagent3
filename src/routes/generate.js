@@ -117,6 +117,57 @@ OPTION 2: Simple multi-file app
 - app.js (vanilla JavaScript)
 - All files work without build tools
 
+⚠️ CRITICAL JAVASCRIPT REQUIREMENTS:
+1. ALL strings must use proper quotes - NO unterminated strings
+2. ALL functions must have closing braces
+3. ALL event listeners must be properly attached
+4. Test your JavaScript mentally - execute every line
+5. Use strict mode: 'use strict';
+6. Validate all DOM selectors exist before use
+
+✅ CORRECT JAVASCRIPT EXAMPLE:
+```javascript
+'use strict';
+
+document.addEventListener('DOMContentLoaded', function() {
+    const addButton = document.getElementById('add-btn');
+    const input = document.getElementById('task-input');
+    const list = document.getElementById('task-list');
+    
+    if (!addButton || !input || !list) {
+        console.error('Required elements not found');
+        return;
+    }
+    
+    addButton.addEventListener('click', function() {
+        const task = input.value.trim();
+        if (task) {
+            const li = document.createElement('li');
+            li.textContent = task;
+            list.appendChild(li);
+            input.value = '';
+        }
+    });
+});
+```
+
+❌ WRONG - DO NOT GENERATE:
+```javascript
+// Missing quotes
+const message = Hello world;
+
+// Unterminated string
+const text = 'This is broken
+
+// Missing closing brace
+function broken() {
+    console.log('test');
+
+// No event listener
+const btn = document.getElementById('btn');
+// btn.addEventListener is never called!
+```
+
 OPTION 3: CDN-based React (if React is absolutely necessary)
 - Single index.html file
 - React loaded from CDN (unpkg.com)
@@ -143,7 +194,16 @@ IMPORTANT: Format your response EXACTLY as a series of files using this structur
 === END FILE ===
 
 Make the code production-ready, well-commented, and follow best practices.
-Use Australian English spelling (organise, colour, analyse, etc.) in all comments and documentation.`;
+Use Australian English spelling (organise, colour, analyse, etc.) in all comments and documentation.
+
+🔍 BEFORE GENERATING - MENTAL CHECKLIST:
+1. ✅ All strings properly quoted?
+2. ✅ All functions have closing braces?
+3. ✅ All event listeners attached to elements?
+4. ✅ All DOM elements exist before use?
+5. ✅ No syntax errors when mentally executing code?
+
+If you cannot answer YES to all 5, DO NOT GENERATE - fix the code first.`;
 
     const result = await model.generateContentStream(prompt);
 
@@ -251,6 +311,42 @@ ${fileList}
         logger.info('Created fallback index.html with file list', { projectId });
       }
     }
+
+    // VALIDATE JavaScript files for syntax errors
+    const jsFiles = generatedFiles.filter(f => f.filename.endsWith('.js'));
+    for (const jsFile of jsFiles) {
+      try {
+        // Use Node.js VM to check syntax without executing
+        const vm = require('vm');
+        new vm.Script(jsFile.content);
+        logger.info('JavaScript syntax valid', { projectId, filename: jsFile.filename });
+      } catch (syntaxError) {
+        logger.error('JavaScript syntax error detected', {
+          projectId,
+          filename: jsFile.filename,
+          error: syntaxError.message,
+          line: syntaxError.lineNumber,
+        });
+        
+        // Send error to frontend
+        res.write(`data: ${JSON.stringify({
+          type: 'error',
+          message: `Syntax error in ${jsFile.filename} at line ${syntaxError.lineNumber}: ${syntaxError.message}`,
+        })}\n\n`);
+        
+        // Mark project as failed
+        await pool.query(
+          'UPDATE projects SET status = $1, updated_at = NOW() WHERE id = $2',
+          ['failed', projectId]
+        );
+        
+        res.write(`data: ${JSON.stringify({ type: 'done', success: false, error: 'Syntax validation failed' })}\n\n`);
+        res.end();
+        return;
+      }
+    }
+    
+    logger.info('All JavaScript files passed syntax validation', { projectId, jsFileCount: jsFiles.length });
 
     // Save generated files to database AND filesystem
     const client = await pool.connect();
