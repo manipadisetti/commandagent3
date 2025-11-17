@@ -72,8 +72,22 @@ function initializeEventListeners() {
         uploadZone.addEventListener('drop', (e) => {
             e.preventDefault();
             uploadZone.classList.remove('dragover');
-            fileInput.files = e.dataTransfer.files;
-            handleFileSelect({ target: fileInput });
+            
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                const file = files[0];
+                const fileInfo = document.getElementById('fileInfo');
+                if (fileInfo) {
+                    fileInfo.textContent = `Selected: ${file.name} (${formatFileSize(file.size)})`;
+                }
+                
+                const uploadIndicator = document.getElementById('uploadIndicator');
+                if (uploadIndicator) {
+                    uploadIndicator.classList.remove('hidden');
+                }
+                
+                uploadAndAnalyse(file);
+            }
         });
     }
     
@@ -272,6 +286,9 @@ async function uploadAndAnalyse(file) {
 
 async function analyseProject() {
     try {
+        // Join Socket.IO room for progress updates
+        socket.emit('join-project', state.projectId);
+        
         const response = await fetch('/api/analyse', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -335,7 +352,7 @@ function displayQuestions() {
     `).join('');
 }
 
-function submitAnswers() {
+async function submitAnswers() {
     state.answers = {};
     
     state.questions.forEach((q, index) => {
@@ -344,6 +361,35 @@ function submitAnswers() {
             state.answers[q.id || index] = answerEl.value;
         }
     });
+    
+    // Enrich analysis with answers
+    try {
+        showLoadingOverlay('Enriching requirements with your answers...');
+        
+        const response = await fetch('/api/enrich-requirements', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                projectId: state.projectId,
+                analysis: state.analysis,
+                questions: state.questions,
+                answers: state.answers
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success && data.enrichedAnalysis) {
+            // Update state with enriched analysis
+            state.analysis = data.enrichedAnalysis;
+        }
+        
+        hideLoadingOverlay();
+    } catch (error) {
+        console.error('Error enriching requirements:', error);
+        hideLoadingOverlay();
+        // Continue anyway - enrichment is optional
+    }
     
     showUnderstanding();
     showStage('confirmationStep');
