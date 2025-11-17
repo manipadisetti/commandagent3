@@ -72,8 +72,26 @@ function initializeEventListeners() {
         uploadZone.addEventListener('drop', (e) => {
             e.preventDefault();
             uploadZone.classList.remove('dragover');
-            fileInput.files = e.dataTransfer.files;
-            handleFileSelect({ target: fileInput });
+            
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                // Manually trigger handleFileSelect since setting fileInput.files doesn't always trigger change event
+                const file = files[0];
+                const fileInfo = document.getElementById('fileInfo');
+                const uploadIndicator = document.getElementById('uploadingIndicator');
+                
+                // Show file info
+                fileInfo.innerHTML = `
+                    <strong>Selected:</strong> ${file.name} (${formatFileSize(file.size)})
+                `;
+                fileInfo.classList.remove('hidden');
+                
+                // Show upload indicator immediately
+                if (uploadIndicator) uploadIndicator.classList.remove('hidden');
+                
+                // Upload the file
+                uploadAndAnalyse(file);
+            }
         });
     }
     
@@ -272,6 +290,9 @@ async function uploadAndAnalyse(file) {
 
 async function analyseProject() {
     try {
+        // Join Socket.IO room for this project to receive progress updates
+        socket.emit('join-project', state.projectId);
+        
         const response = await fetch('/api/analyse', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -335,18 +356,46 @@ function displayQuestions() {
     `).join('');
 }
 
-function submitAnswers() {
-    state.answers = {};
+async function submitAnswers() {
+    // Collect all answers
+    const answerInputs = document.querySelectorAll('.answer-input');
     
     state.questions.forEach((q, index) => {
         const answerEl = document.getElementById(`answer-${index}`);
         if (answerEl) {
-            state.answers[q.id || index] = answerEl.value;
+            state.answers[q.question || q.id || index] = answerEl.value;
         }
     });
     
+    // Enrich the analysis with answers
+    await enrichAnalysisWithAnswers();
+    
     showUnderstanding();
     showStage('confirmationStep');
+}
+
+async function enrichAnalysisWithAnswers() {
+    try {
+        // Send answers to backend to enrich the requirements
+        const response = await fetch('/api/enrich-requirements', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                projectId: state.projectId,
+                answers: state.answers
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            // Update analysis with enriched version
+            state.analysis = data.enrichedAnalysis || state.analysis;
+        }
+    } catch (error) {
+        console.error('Failed to enrich requirements:', error);
+        // Continue anyway with original analysis
+    }
 }
 
 // ============================================================================
@@ -386,37 +435,54 @@ function showUnderstanding() {
 // Knowledge Graph
 // ============================================================================
 
-function generateKnowledgeGraph() {
+async function generateKnowledgeGraph() {
     const graphContainer = document.getElementById('knowledgeGraph');
     if (!graphContainer) return;
     
-    // Simple visual representation using divs (can be replaced with D3.js or similar)
-    graphContainer.innerHTML = `
-        <div style="display: flex; flex-direction: column; gap: 20px; align-items: center;">
-            <div style="background: #2563eb; color: white; padding: 20px; border-radius: 10px; font-weight: 600;">
-                User Requirements
-            </div>
-            <div style="width: 2px; height: 30px; background: #2563eb;"></div>
-            <div style="background: #10b981; color: white; padding: 20px; border-radius: 10px; font-weight: 600;">
-                AI Analysis
-            </div>
-            <div style="width: 2px; height: 30px; background: #10b981;"></div>
-            <div style="display: flex; gap: 20px;">
-                <div style="background: #f59e0b; color: white; padding: 20px; border-radius: 10px; font-weight: 600;">
-                    Frontend
+    // Show loading state
+    graphContainer.innerHTML = '<div style="text-align: center; padding: 40px;"><div class="spinner"></div><p>Generating project visualisation...</p></div>';
+    
+    try {
+        const response = await fetch('/api/knowledge-graph', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ projectId: state.projectId })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success && data.mermaidDiagram) {
+            // Render Mermaid diagram
+            graphContainer.innerHTML = `<div class="mermaid">${data.mermaidDiagram}</div>`;
+            
+            // Initialize Mermaid if not already done
+            if (typeof mermaid !== 'undefined') {
+                mermaid.init(undefined, document.querySelectorAll('.mermaid'));
+            }
+        } else {
+            throw new Error('No diagram generated');
+        }
+    } catch (error) {
+        console.error('Knowledge graph error:', error);
+        // Fallback to simple diagram
+        graphContainer.innerHTML = `
+            <div style="display: flex; flex-direction: column; gap: 20px; align-items: center;">
+                <div style="background: #2563eb; color: white; padding: 20px; border-radius: 10px; font-weight: 600;">
+                    ${state.analysis.summary || 'Your Application'}
                 </div>
-                <div style="background: #f59e0b; color: white; padding: 20px; border-radius: 10px; font-weight: 600;">
-                    Backend
+                <div style="width: 2px; height: 30px; background: #2563eb;"></div>
+                <div style="display: flex; gap: 20px; flex-wrap: wrap; justify-content: center;">
+                    ${(state.analysis.features || []).slice(0, 4).map(feature => `
+                        <div style="background: #10b981; color: white; padding: 15px; border-radius: 10px; max-width: 200px;">
+                            ${feature}
+                        </div>
+                    `).join('')}
                 </div>
-                <div style="background: #f59e0b; color: white; padding: 20px; border-radius: 10px; font-weight: 600;">
-                    Database
+                <div style="width: 2px; height: 30px; background: #10b981;"></div>
+                <div style="background: #8b5cf6; color: white; padding: 20px; border-radius: 10px; font-weight: 600;">
+                    Deployed Application
                 </div>
             </div>
-            <div style="width: 2px; height: 30px; background: #f59e0b;"></div>
-            <div style="background: #8b5cf6; color: white; padding: 20px; border-radius: 10px; font-weight: 600;">
-                Deployed Application
-            </div>
-        </div>
     `;
 }
 

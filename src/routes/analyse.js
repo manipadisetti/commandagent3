@@ -16,6 +16,9 @@ router.post('/', async (req, res) => {
 
   try {
     logger.info('Analysis request received', { projectId });
+    
+    // Get Socket.IO instance for progress updates
+    const io = req.app.get('io');
 
     // Validate API key
     if (!process.env.GEMINI_API_KEY) {
@@ -74,9 +77,27 @@ router.post('/', async (req, res) => {
       documentCount: documentsResult.rows.length,
       contentLength: combinedContent.length,
     });
+    
+    // Send initial progress
+    if (io) {
+      io.to(`project-${projectId}`).emit('analysis:progress', {
+        percentage: 10,
+        status: 'Starting analysis...',
+        tokensUsed: 0
+      });
+    }
 
     // Send to Gemini for analysis
     const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash-exp' });
+    
+    // Update progress
+    if (io) {
+      io.to(`project-${projectId}`).emit('analysis:progress', {
+        percentage: 30,
+        status: 'Analysing requirements...',
+        tokensUsed: 0
+      });
+    }
 
     const prompt = `You are an expert business analyst helping non-technical users build applications. Analyse the following requirements documents and provide:
 
@@ -124,6 +145,15 @@ Use Australian English spelling (analyse, organise, colour, etc.) in all text.`;
     const response = await result.response;
     const analysisText = response.text();
     let analysis;
+    
+    // Update progress
+    if (io) {
+      io.to(`project-${projectId}`).emit('analysis:progress', {
+        percentage: 70,
+        status: 'Processing response...',
+        tokensUsed: analysisText.length
+      });
+    }
 
     try {
       // Try to parse as JSON - remove markdown code blocks if present
@@ -176,6 +206,15 @@ Use Australian English spelling (analyse, organise, colour, etc.) in all text.`;
       'UPDATE projects SET analysis_json = $1, updated_at = NOW() WHERE id = $2',
       [JSON.stringify(analysis), projectId]
     );
+    
+    // Send completion progress
+    if (io) {
+      io.to(`project-${projectId}`).emit('analysis:progress', {
+        percentage: 100,
+        status: 'Analysis complete!',
+        tokensUsed: analysisText.length
+      });
+    }
 
     const responseData = {
       success: true,

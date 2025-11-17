@@ -2,9 +2,14 @@
 // ============================================================================
 
 const express = require('express');
+const { GoogleGenerativeAI } = require('@google/generative-ai');
 const router = express.Router();
 const pool = require('../config/database');
+const logger = require('../config/logger');
 const { generateKnowledgeGraph, toD3Format, toCytoscapeFormat, toHTML } = require('../utils/knowledgeGraph');
+
+// Initialise Gemini AI
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
 /**
  * POST /api/knowledge-graph
@@ -39,9 +44,54 @@ router.post('/', async (req, res) => {
         }
 
         const project = projectResult.rows[0];
-        const analysisData = project.analysis_data || {};
+        const analysisData = project.analysis_json ? JSON.parse(project.analysis_json) : {};
 
-        // Generate knowledge graph
+        // Generate project-specific Mermaid diagram using Gemini
+        let mermaidDiagram = null;
+        try {
+            const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash-exp' });
+            
+            const prompt = `You are creating a visual diagram for a software project.
+
+Project Name: ${project.name || 'Application'}
+Summary: ${analysisData.summary || 'No summary'}
+Features: ${JSON.stringify(analysisData.features || [])}
+
+Create a Mermaid diagram that shows:
+1. The main components/modules of this application
+2. How users interact with it (user flows)
+3. Key features and their relationships
+4. Data flow if applicable
+
+Use the MOST APPROPRIATE diagram type:
+- flowchart for user workflows
+- graph for system architecture
+- sequenceDiagram for user interactions
+- classDiagram for data models
+
+Respond with ONLY the Mermaid diagram code (no markdown code blocks, no explanations).
+Make it specific to THIS application, not generic.
+
+Example output format:
+flowchart TD
+    A[User] --> B[Login]
+    B --> C{Authenticated?}
+    C -->|Yes| D[Dashboard]
+    C -->|No| B`;
+
+            const result = await model.generateContent(prompt);
+            const response = await result.response;
+            mermaidDiagram = response.text().trim();
+            
+            // Clean up any markdown code blocks
+            mermaidDiagram = mermaidDiagram.replace(/```mermaid\s*/g, '').replace(/```\s*/g, '');
+            
+            logger.info('Generated Mermaid diagram', { projectId, diagramLength: mermaidDiagram.length });
+        } catch (error) {
+            logger.error('Failed to generate Mermaid diagram', { error: error.message });
+        }
+
+        // Generate knowledge graph (fallback)
         const graph = generateKnowledgeGraph({
             projectName: project.project_name,
             summary: analysisData.summary,
@@ -80,6 +130,7 @@ router.post('/', async (req, res) => {
         res.json({
             success: true,
             graph: formattedGraph,
+            mermaidDiagram: mermaidDiagram,
             metadata: graph.metadata
         });
 
@@ -138,6 +189,7 @@ router.get('/:projectId', async (req, res) => {
         res.json({
             success: true,
             graph: formattedGraph,
+            mermaidDiagram: mermaidDiagram,
             metadata: graph.metadata
         });
 

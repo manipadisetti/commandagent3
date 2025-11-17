@@ -27,10 +27,7 @@ router.post('/', async (req, res) => {
 
         // Get project details
         const projectQuery = `
-            SELECT p.*, a.analysis_data
-            FROM projects p
-            LEFT JOIN analysis a ON p.id = a.project_id
-            WHERE p.id = $1
+            SELECT * FROM projects WHERE id = $1
         `;
         
         const projectResult = await pool.query(projectQuery, [projectId]);
@@ -43,7 +40,14 @@ router.post('/', async (req, res) => {
         }
 
         const project = projectResult.rows[0];
-        const analysisData = project.analysis_data || {};
+        let analysisData = {};
+        
+        try {
+            analysisData = project.analysis_json ? JSON.parse(project.analysis_json) : {};
+        } catch (parseError) {
+            console.error('Failed to parse analysis_json:', parseError);
+            analysisData = {};
+        }
 
         // Generate marketing website HTML
         const marketingHTML = generateMarketingWebsite(project, analysisData, baseUrl);

@@ -92,14 +92,42 @@ ${Object.keys(context.answers).length > 0 ? `User Answers:\n${JSON.stringify(con
 ${Object.keys(context.preferences).length > 0 ? `Preferences:\n${JSON.stringify(context.preferences, null, 2)}` : ''}
 
 Generate a complete application with:
-1. index.html - The main entry point that loads the application
-2. All necessary source code files
-3. Configuration files (package.json, .env.example, etc.)
-4. README.md with setup instructions
-5. Database schema (if needed)
-6. API documentation (if applicable)
+1. index.html - A STANDALONE HTML file that works immediately in the browser
+2. All necessary CSS in separate files or inline
+3. JavaScript files that work without build tools (vanilla JS or CDN libraries)
+4. Configuration files (package.json, .env.example, etc.) for backend if needed
+5. README.md with setup instructions
+6. Database schema (if needed)
+7. API documentation (if applicable)
 
-The index.html file MUST be in the root directory and should load all necessary CSS and JavaScript files.
+CRITICAL REQUIREMENTS FOR index.html:
+- MUST be a complete, working HTML file in the root directory
+- MUST work when opened directly in a browser (no build step)
+- Use vanilla JavaScript or CDN-hosted libraries (React via CDN, Vue via CDN, etc.)
+- If using React, use React from CDN with Babel standalone for JSX
+- DO NOT generate JSX files that need webpack/vite/create-react-app
+- All JavaScript MUST be either inline or in separate .js files that work in browsers
+- Include all CSS either inline or in separate .css files
+
+Example of acceptable React approach:
+```html
+<!DOCTYPE html>
+<html>
+<head>
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+</head>
+<body>
+  <div id="root"></div>
+  <script type="text/babel">
+    // React code here
+  </script>
+</body>
+</html>
+```
+
+The index.html file MUST work immediately when accessed via a web server without any build process.
 
 IMPORTANT: Format your response EXACTLY as a series of files using this structure:
 === FILENAME: path/to/file.ext ===

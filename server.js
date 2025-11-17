@@ -21,6 +21,7 @@ const logger = require('./src/config/logger');
 // Import routes
 const uploadRoute = require('./src/routes/upload');
 const analyseRoute = require('./src/routes/analyse');
+const enrichRequirementsRoute = require('./src/routes/enrichRequirements');
 const generateRoute = require('./src/routes/generate');
 const chatRoute = require('./src/routes/chat');
 const downloadRoute = require('./src/routes/download');
@@ -100,6 +101,7 @@ app.get('/api/health', async (req, res) => {
 // API Routes
 app.use('/api/upload', uploadRoute);
 app.use('/api/analyse', analyseRoute);
+app.use('/api/enrich-requirements', enrichRequirementsRoute);
 app.use('/api/generate', generateRoute);
 app.use('/api/chat', chatRoute);
 app.use('/api/download', downloadRoute);
