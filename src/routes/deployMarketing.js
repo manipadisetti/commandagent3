@@ -179,7 +179,7 @@ function generateMarketingWebsite(project, analysis, marketingCopy, baseUrl) {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>${projectName}</title>
-    <meta name="description" content="${description}">
+    <meta name="description" content="${heroSubtitle}">
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
